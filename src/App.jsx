@@ -1,6 +1,52 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import Fixtures from './Fixtures.jsx'
+
+const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
+const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
+
+const fallbackMatch = {
+  title: 'HCPL Live Match',
+  status: 'YouTube Live',
+  streamUrl: 'https://www.youtube.com/watch?v=odLIg0G5M1w',
+  venue: 'Hazaribag Stadium',
+  battingTeam: 'Team Alpha',
+  bowlingTeam: 'Team Beta',
+  score: '150/5',
+  overs: '17.4',
+  target: '146',
+}
+
+function getYouTubeEmbedUrl(url) {
+  try {
+    const parsedUrl = new URL(url)
+    const videoId = parsedUrl.hostname.includes('youtu.be')
+      ? parsedUrl.pathname.slice(1)
+      : parsedUrl.searchParams.get('v')
+
+    if (!videoId) {
+      return null
+    }
+
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0&playsinline=1&rel=0&controls=1`
+  } catch {
+    return null
+  }
+}
+
+function normalizeLiveMatch(data) {
+  return {
+    title: data.title || data.matchTitle || data.name || fallbackMatch.title,
+    status: data.status || data.matchStatus || 'Live',
+    streamUrl: data.streamUrl || data.videoUrl || data.liveStreamUrl || fallbackMatch.streamUrl,
+    venue: data.venue || fallbackMatch.venue,
+    battingTeam: data.battingTeam || data.teamA || data.homeTeam || fallbackMatch.battingTeam,
+    bowlingTeam: data.bowlingTeam || data.teamB || data.awayTeam || fallbackMatch.bowlingTeam,
+    score: data.score || data.currentScore || fallbackMatch.score,
+    overs: data.overs || data.currentOvers || fallbackMatch.overs,
+    target: data.target || data.chaseTarget || fallbackMatch.target,
+  }
+}
 
 function App() {
   const [page, setPage] = useState('home')
@@ -8,13 +54,61 @@ function App() {
   const [teamBScore, setTeamBScore] = useState(145)
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
+  const [liveMatch, setLiveMatch] = useState(fallbackMatch)
+  const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
+
+  useEffect(() => {
+    if (!liveMatchApiUrl) {
+      return
+    }
+
+    let isMounted = true
+    let refreshTimer
+
+    async function loadLiveMatch() {
+      try {
+        const response = await fetch(liveMatchApiUrl)
+
+        if (!response.ok) {
+          throw new Error(`Live API returned ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (isMounted) {
+          setLiveMatch(normalizeLiveMatch(data))
+          setMatchApiStatus('Live API connected')
+        }
+      } catch (error) {
+        if (isMounted) {
+          setMatchApiStatus(error.message || 'Unable to load live API')
+        }
+      }
+    }
+
+    loadLiveMatch()
+    refreshTimer = window.setInterval(loadLiveMatch, liveMatchPollMs)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(refreshTimer)
+    }
+  }, [])
 
   return (
     <div className="app">
       <header className="header">
         <div className="header-left">
-          <img src="/hcpllogo.jpeg" className="logo" alt="Hcpl League logo" />
-          <h1>Hcpl League</h1>
+          <div className="logo-section">
+            <div className="logo-mark">
+              <img src="/hcpllogo.jpeg" className="logo" alt="Hcpl League logo" />
+            </div>
+            <div className="brand-copy">
+              <span className="brand-kicker">Hazaribag Premier Cricket</span>
+              <h1>HCPL League</h1>
+            </div>
+          </div>
         </div>
         <nav className="main-nav">
           <button className={page === 'home' ? 'nav-button active' : 'nav-button'} onClick={() => setPage('home')}>
@@ -30,31 +124,54 @@ function App() {
         <>
           <section className="hero">
         <div className="video-container">
-          <video controls>
-            <source src="/sample-video.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
-        <div className="comments">
-          <div className="advertisement">
-            <h3>Featured Partner</h3>
-            <div className="ad-content">
-              <div className="ad-image">
-                <img src="https://via.placeholder.com/280x120?text=Zumbi.com" alt="Zumbi.com" />
-              </div>
-              <div className="ad-info">
-                <h4>Zumbi.com</h4>
-                <p className="ad-tagline">Online & Retail Store</p>
-                <ul className="ad-categories">
-                  <li>Fashion</li>
-                  <li>FMCG Goods</li>
-                  <li>Pharmaceuticals</li>
-                </ul>
-                <p className="ad-featured">Dettol Hand Wash & More</p>
-                <button className="ad-button">Shop Now</button>
-              </div>
+          {youtubeEmbedUrl ? (
+            <iframe
+              key={youtubeEmbedUrl}
+              src={youtubeEmbedUrl}
+              title={liveMatch.title}
+              allow="autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <video key={liveMatch.streamUrl} controls autoPlay muted playsInline>
+              <source src={liveMatch.streamUrl} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          )}
+          <div className="live-video-overlay">
+            <div>
+              <span className="live-pill">{liveMatch.status}</span>
+              <h2>{liveMatch.title}</h2>
+              <p>{liveMatch.venue}</p>
+            </div>
+            <div className="live-score-strip">
+              <strong>{liveMatch.battingTeam}</strong>
+              <span>{liveMatch.score}</span>
+              <small>Overs {liveMatch.overs} | Target {liveMatch.target}</small>
             </div>
           </div>
+          <span className="api-status">{matchApiStatus}</span>
+        </div>
+        <div className="comments">
+          <aside className="partner-banner" aria-label="Featured partner zumbii.com promotion">
+            <div className="partner-copy">
+              <span className="partner-eyebrow">Featured Partner</span>
+              <h3>Shop match-day essentials on zumbii.com</h3>
+              <p>Fashion, FMCG, pharmaceuticals, Dettol Hand Wash, daily care and more from one trusted store.</p>
+              <div className="partner-actions">
+                <a className="partner-button" href="https://zumbii.com" target="_blank" rel="noreferrer">
+                  Shop Now
+                </a>
+                <span className="partner-badge">Online + Retail</span>
+              </div>
+            </div>
+            <div className="partner-products" aria-hidden="true">
+              <span>Fashion</span>
+              <span>FMCG</span>
+              <span>Pharma</span>
+              <span>Daily Care</span>
+            </div>
+          </aside>
           <h2>Live Comments</h2>
           <div className="comment-list">
             {comments.map((comment, index) => (
@@ -117,7 +234,29 @@ function App() {
       )}
       
       <footer className="footer">
-        <p>&copy; 2026 Hcpl League</p>
+        <div className="footer-brand">
+          <h2>HCPL League</h2>
+          <p>Hazaribag Premier Cricket League</p>
+        </div>
+        <div className="footer-contact">
+          <h3>Contact</h3>
+          <p>
+            Phone: <a href="tel:+919999999999">+91 99999 99999</a>
+          </p>
+          <p>
+            Email: <a href="mailto:info@hcplleague.com">info@hcplleague.com</a>
+          </p>
+        </div>
+        <div className="footer-social">
+          <h3>Social</h3>
+          <div className="social-links">
+            <a href="https://www.instagram.com/" target="_blank" rel="noreferrer">Instagram</a>
+            <a href="https://www.facebook.com/" target="_blank" rel="noreferrer">Facebook</a>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>&copy; 2026 HCPL League. All rights reserved.</p>
+        </div>
       </footer>
     </div>
   )
