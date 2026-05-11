@@ -102,7 +102,7 @@ function App() {
         <div className="header-left">
           <div className="logo-section">
             <div className="logo-mark">
-              <img src="/hcpllogo.jpeg" className="logo" alt="Hcpl League logo" />
+              <img src="/hcpllogo.jpeg" className="logo" alt="HCPL League logo" width="102" height="102" />
             </div>
             <div className="brand-copy">
               <span className="brand-kicker">Hazaribag Premier Cricket</span>
@@ -205,9 +205,30 @@ function App() {
             <p className="mission-statement">Nasha Mukti Abhiyan Mission - Boosting Athletics and Wellness Among Young Generations</p>
           </div>
           <div className="sponsors-gallery">
-            <img src="/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg" alt="Press Conference Image 1" className="sponsor-img" />
-            <img src="/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg" alt="Press Conference Image 2" className="sponsor-img" />
-            <img src="/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg" alt="Press Conference Image 3" className="sponsor-img" />
+            <img
+              src="/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg"
+              alt="HCPL League press conference with Omega Group director and Hazaribag leaders"
+              className="sponsor-img"
+              width="360"
+              height="250"
+              loading="lazy"
+            />
+            <img
+              src="/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg"
+              alt="Hazaribag Premier Cricket League leaders attending the press conference"
+              className="sponsor-img"
+              width="360"
+              height="250"
+              loading="lazy"
+            />
+            <img
+              src="/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg"
+              alt="HCPL League press conference audience and event guests"
+              className="sponsor-img"
+              width="360"
+              height="250"
+              loading="lazy"
+            />
           </div>
         </div>
 
@@ -241,7 +262,10 @@ function App() {
         <div className="footer-contact">
           <h3>Contact</h3>
           <p>
-            Phone: <a href="tel:+919999999999">+91 99999 99999</a>
+            Phone: <a href="tel:+917050193876">+91 7050193876</a>
+          </p>
+          <p>
+            Phone: <a href="tel:+919310568900">+91 9310568900</a>
           </p>
           <p>
             Email: <a href="mailto:info@hcplleague.com">info@hcplleague.com</a>
