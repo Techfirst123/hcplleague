@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import Fixtures from './Fixtures.jsx'
 
 const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
 const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
@@ -15,6 +14,253 @@ const fallbackMatch = {
   score: '150/5',
   overs: '17.4',
   target: '146',
+}
+
+const teamAnnouncement = {
+  title: 'Big News Coming',
+  announcement: 'Verified team names will be added here after management approval.',
+}
+
+const navItems = [
+  { id: 'home', label: 'Home' },
+  { id: 'match-center', label: 'Match Center' },
+  { id: 'teams', label: 'Teams' },
+  { id: 'sponsors', label: 'Sponsors' },
+  { id: 'gallery', label: 'Gallery' },
+  { id: 'registration', label: 'Registration' },
+  { id: 'highlights', label: 'Highlights' },
+]
+
+const matchCenterData = {
+  liveScores: [
+    { title: 'Team Alpha', value: '150/5', meta: '17.4 overs' },
+    { title: 'Team Beta', value: '145/7', meta: 'Target 146' },
+    { title: 'Match Status', value: 'Live', meta: 'YouTube stream active' },
+  ],
+  schedule: [
+    ['May 10, 2026', 'Team Alpha vs Team Beta', 'HCPL Stadium', 'Scheduled'],
+    ['May 12, 2026', 'Team Gamma vs Team Delta', 'City Arena', 'Scheduled'],
+    ['May 14, 2026', 'Team Alpha vs Team Gamma', 'National Ground', 'Scheduled'],
+  ],
+  points: [
+    ['Coming Soon', '-', '-', '-', '-', '-'],
+    ['Coming Soon', '-', '-', '-', '-', '-'],
+    ['Coming Soon', '-', '-', '-', '-', '-'],
+  ],
+  playerStats: [
+    { title: 'Most Runs', value: 'Coming Soon', meta: 'Batting leaderboard' },
+    { title: 'Most Wickets', value: 'Coming Soon', meta: 'Bowling leaderboard' },
+    { title: 'Best Strike Rate', value: 'Coming Soon', meta: 'Minimum innings required' },
+  ],
+}
+
+const contentPages = {
+  teams: {
+    kicker: 'Teams',
+    title: 'Verified Teams',
+    intro: 'Team names will appear here after registration documents and squad details are verified by management.',
+    cards: [
+      { title: 'Team 1', value: 'Coming Soon', meta: 'Verification pending' },
+      { title: 'Team 2', value: 'Coming Soon', meta: 'Verification pending' },
+      { title: 'Team 3', value: 'Coming Soon', meta: 'Verification pending' },
+    ],
+  },
+  sponsors: {
+    kicker: 'Sponsors',
+    title: 'Sponsors and Partners',
+    intro: 'HCPL League sponsor and partner announcements will be featured here.',
+    cards: [
+      { title: 'Featured Partner', value: 'zumbii.com', meta: 'Fashion, FMCG, pharma and daily essentials' },
+      { title: 'Title Sponsor', value: 'Coming Soon', meta: 'Management verification pending' },
+      { title: 'Ground Partner', value: 'Coming Soon', meta: 'Open for association' },
+    ],
+  },
+  gallery: {
+    kicker: 'Gallery',
+    title: 'HCPL Moments',
+    intro: 'Browse press conference and league event photos.',
+    gallery: [
+      {
+        src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
+        alt: 'HCPL League press conference with Omega Group director and Hazaribag leaders',
+      },
+      {
+        src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
+        alt: 'Hazaribag Premier Cricket League leaders attending the press conference',
+      },
+      {
+        src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
+        alt: 'HCPL League press conference audience and event guests',
+      },
+    ],
+  },
+  highlights: {
+    kicker: 'Highlights',
+    title: 'Match Highlights',
+    intro: 'Video highlights and best moments will be added after official matches are completed.',
+    cards: [
+      { title: 'Latest Highlight', value: 'Coming Soon', meta: 'Match clips will appear here' },
+      { title: 'Best Sixes', value: 'Coming Soon', meta: 'Fan favorite moments' },
+      { title: 'Best Wickets', value: 'Coming Soon', meta: 'Bowling highlights' },
+    ],
+  },
+}
+
+function MatchCenterPage() {
+  return (
+    <main className="info-page">
+      <section className="info-hero">
+        <span className="section-kicker">Match Center</span>
+        <h2>Live Scores, Schedule, Points Table and Player Stats</h2>
+        <p>Track the complete HCPL League match picture in one place, from live scores to standings and top performers.</p>
+      </section>
+
+      <section className="match-center-block">
+        <div className="block-heading">
+          <h3>Live Scores</h3>
+          <span>Updated during match time</span>
+        </div>
+        <div className="info-grid">
+          {matchCenterData.liveScores.map((card) => (
+            <article key={`${card.title}-${card.value}`} className="info-card">
+              <span>{card.title}</span>
+              <strong>{card.value}</strong>
+              <p>{card.meta}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="match-center-block">
+        <div className="block-heading">
+          <h3>Match Schedule</h3>
+          <span>Upcoming fixtures</span>
+        </div>
+        <div className="table-panel">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Match</th>
+                <th>Venue</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchCenterData.schedule.map((row, index) => (
+                <tr key={index}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${index}-${cellIndex}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="match-center-block">
+        <div className="block-heading">
+          <h3>Points Table</h3>
+          <span>Official standings</span>
+        </div>
+        <div className="table-panel">
+          <table>
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>P</th>
+                <th>W</th>
+                <th>L</th>
+                <th>NRR</th>
+                <th>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchCenterData.points.map((row, index) => (
+                <tr key={index}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${index}-${cellIndex}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="match-center-block">
+        <div className="block-heading">
+          <h3>Player Stats</h3>
+          <span>Top performers</span>
+        </div>
+        <div className="info-grid">
+          {matchCenterData.playerStats.map((card) => (
+            <article key={`${card.title}-${card.value}`} className="info-card">
+              <span>{card.title}</span>
+              <strong>{card.value}</strong>
+              <p>{card.meta}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    </main>
+  )
+}
+
+function InfoPage({ pageData }) {
+  return (
+    <main className="info-page">
+      <section className="info-hero">
+        <span className="section-kicker">{pageData.kicker}</span>
+        <h2>{pageData.title}</h2>
+        <p>{pageData.intro}</p>
+      </section>
+
+      {pageData.cards && (
+        <section className="info-grid">
+          {pageData.cards.map((card) => (
+            <article key={`${card.title}-${card.value}`} className="info-card">
+              <span>{card.title}</span>
+              <strong>{card.value}</strong>
+              <p>{card.meta}</p>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {pageData.table && (
+        <section className="table-panel">
+          <table>
+            <thead>
+              <tr>
+                {pageData.table.headings.map((heading) => (
+                  <th key={heading}>{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageData.table.rows.map((row, index) => (
+                <tr key={index}>
+                  {row.map((cell, cellIndex) => (
+                    <td key={`${index}-${cellIndex}`}>{cell}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {pageData.gallery && (
+        <section className="page-gallery">
+          {pageData.gallery.map((image) => (
+            <img key={image.src} src={image.src} alt={image.alt} width="420" height="280" loading="lazy" />
+          ))}
+        </section>
+      )}
+    </main>
+  )
 }
 
 function getYouTubeEmbedUrl(url) {
@@ -55,6 +301,7 @@ function App() {
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   const [liveMatch, setLiveMatch] = useState(fallbackMatch)
+  const [registrationStatus, setRegistrationStatus] = useState('')
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
 
@@ -111,12 +358,15 @@ function App() {
           </div>
         </div>
         <nav className="main-nav">
-          <button className={page === 'home' ? 'nav-button active' : 'nav-button'} onClick={() => setPage('home')}>
-            Home
-          </button>
-          <button className={page === 'fixtures' ? 'nav-button active' : 'nav-button'} onClick={() => setPage('fixtures')}>
-            Fixtures
-          </button>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              className={page === item.id ? 'nav-button active' : 'nav-button'}
+              onClick={() => setPage(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
         </nav>
       </header>
       
@@ -198,6 +448,28 @@ function App() {
       </section>
       
       <section className="content">
+        <section className="team-announcement" aria-labelledby="team-announcement-title">
+          <div className="team-announcement-header">
+            <div>
+              <span className="section-kicker">Team Announcement</span>
+              <h2 id="team-announcement-title">{teamAnnouncement.title}</h2>
+              <p>{teamAnnouncement.announcement}</p>
+            </div>
+            <span className="announcement-badge">Verification Open</span>
+          </div>
+
+          <div className="team-placeholder">
+            <div>
+              <span>Team Name</span>
+              <strong>Coming Soon</strong>
+              <p>Submitted teams will appear here once their documents and squad details are verified by management.</p>
+            </div>
+            <button type="button" onClick={() => setPage('registration')}>
+              Register Team
+            </button>
+          </div>
+        </section>
+
         <div className="sponsors">
           <h2>Press Conference</h2>
           <div className="press-headline">
@@ -250,8 +522,88 @@ function App() {
         </div>
       </section>
         </>
+      ) : page === 'match-center' ? (
+        <MatchCenterPage />
+      ) : page === 'registration' ? (
+        <main className="registration-page">
+          <section className="registration-hero">
+            <span className="section-kicker">Team Registration</span>
+            <h2>Submit Your Squad for Management Verification</h2>
+            <p>Register your team with up to 15 players. Captain, vice captain, contact numbers, and Aadhaar details are required for verification.</p>
+          </section>
+
+          <form
+            className="registration-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              setRegistrationStatus('Team registration submitted for management verification.')
+              event.currentTarget.reset()
+            }}
+          >
+            <section className="form-section">
+              <h3>Team Details</h3>
+              <div className="form-grid">
+                <label>
+                  Team Name
+                  <input name="teamName" type="text" placeholder="Enter team name" required />
+                </label>
+                <label>
+                  Captain Name
+                  <input name="captainName" type="text" placeholder="Enter captain name" required />
+                </label>
+                <label>
+                  Captain Number
+                  <input name="captainNumber" type="tel" placeholder="+91 XXXXX XXXXX" required />
+                </label>
+                <label>
+                  Vice Captain Name
+                  <input name="viceCaptainName" type="text" placeholder="Enter vice captain name" required />
+                </label>
+                <label>
+                  Vice Captain Number
+                  <input name="viceCaptainNumber" type="tel" placeholder="+91 XXXXX XXXXX" required />
+                </label>
+              </div>
+            </section>
+
+            <section className="form-section">
+              <div className="players-form-header">
+                <h3>Player Details</h3>
+                <span>Maximum 15 players</span>
+              </div>
+              <div className="player-fields">
+                {Array.from({ length: 15 }, (_, index) => (
+                  <fieldset key={index} className="player-fieldset">
+                    <legend>Player {index + 1}</legend>
+                    <label>
+                      Player Name
+                      <input name={`player-${index + 1}-name`} type="text" placeholder="Full name" required />
+                    </label>
+                    <label>
+                      Aadhaar Card Number
+                      <input
+                        name={`player-${index + 1}-aadhaar`}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]{12}"
+                        maxLength="12"
+                        placeholder="12 digit Aadhaar number"
+                        required
+                      />
+                    </label>
+                  </fieldset>
+                ))}
+              </div>
+            </section>
+
+            <div className="registration-actions">
+              <button type="submit">Submit for Verification</button>
+              {registrationStatus && <p role="status">{registrationStatus}</p>}
+            </div>
+          </form>
+        </main>
       ) : (
-        <Fixtures />
+        <InfoPage pageData={contentPages[page]} />
       )}
       
       <footer className="footer">
