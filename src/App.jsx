@@ -3,6 +3,8 @@ import './App.css'
 
 const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
 const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
+const teamRegistrationWebhookUrl = import.meta.env.NEXT_PUBLIC_APPS_SCRIPT_URL || import.meta.env.VITE_TEAM_REGISTRATION_WEBHOOK_URL
+const teamRegistrationSheetUrl = 'https://docs.google.com/spreadsheets/d/1tBXBpebHrXQ65XV5QUstK_KOlpxsEsbnXMxglEFGobA/edit?usp=sharing'
 
 const fallbackMatch = {
   title: 'HCPL Live Match',
@@ -81,14 +83,22 @@ const contentPages = {
     intro: 'Browse press conference and league event photos.',
     gallery: [
       {
+        type: 'video',
+        src: '/WhatsApp Video 2026-05-12 at 2.48.45 PM.mp4',
+        title: 'Mumbai11',
+      },
+      {
+        type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
         alt: 'HCPL League press conference with Omega Group director and Hazaribag leaders',
       },
       {
+        type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
         alt: 'Hazaribag Premier Cricket League leaders attending the press conference',
       },
       {
+        type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
         alt: 'HCPL League press conference audience and event guests',
       },
@@ -254,8 +264,18 @@ function InfoPage({ pageData }) {
 
       {pageData.gallery && (
         <section className="page-gallery">
-          {pageData.gallery.map((image) => (
-            <img key={image.src} src={image.src} alt={image.alt} width="420" height="280" loading="lazy" />
+          {pageData.gallery.map((item) => (
+            item.type === 'video' ? (
+              <article key={item.src} className="gallery-video-card">
+                <h3>{item.title}</h3>
+                <video controls preload="metadata" title={item.title}>
+                  <source src={item.src} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </article>
+            ) : (
+              <img key={item.src} src={item.src} alt={item.alt} width="420" height="280" loading="lazy" />
+            )
           ))}
         </section>
       )}
@@ -294,6 +314,45 @@ function normalizeLiveMatch(data) {
   }
 }
 
+function getStoredTeams() {
+  try {
+    return JSON.parse(window.localStorage.getItem('hcplRegisteredTeams')) || []
+  } catch {
+    return []
+  }
+}
+
+function buildRegistrationPayload(form) {
+  const formData = new FormData(form)
+  const players = Array.from({ length: 15 }, (_, index) => {
+    const playerNumber = index + 1
+    const name = formData.get(`player-${playerNumber}-name`)?.toString().trim()
+    const aadhaar = formData.get(`player-${playerNumber}-aadhaar`)?.toString().trim()
+
+    if (!name && !aadhaar) {
+      return null
+    }
+
+    return {
+      playerNumber,
+      name,
+      aadhaar,
+    }
+  }).filter(Boolean)
+
+  return {
+    submittedAt: new Date().toISOString(),
+    sourceSheet: teamRegistrationSheetUrl,
+    status: 'Pending management verification',
+    teamName: formData.get('teamName')?.toString().trim(),
+    captainName: formData.get('captainName')?.toString().trim(),
+    captainNumber: formData.get('captainNumber')?.toString().trim(),
+    viceCaptainName: formData.get('viceCaptainName')?.toString().trim(),
+    viceCaptainNumber: formData.get('viceCaptainNumber')?.toString().trim(),
+    players,
+  }
+}
+
 function App() {
   const [page, setPage] = useState('home')
   const [teamAScore, setTeamAScore] = useState(150)
@@ -302,8 +361,13 @@ function App() {
   const [newComment, setNewComment] = useState('')
   const [liveMatch, setLiveMatch] = useState(fallbackMatch)
   const [registrationStatus, setRegistrationStatus] = useState('')
+  const [registeredTeams, setRegisteredTeams] = useState([])
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
+
+  useEffect(() => {
+    setRegisteredTeams(getStoredTeams())
+  }, [])
 
   useEffect(() => {
     if (!liveMatchApiUrl) {
@@ -461,13 +525,25 @@ function App() {
           <div className="team-placeholder">
             <div>
               <span>Team Name</span>
-              <strong>Coming Soon</strong>
-              <p>Submitted teams will appear here once their documents and squad details are verified by management.</p>
+              <strong>{registeredTeams.length > 0 ? `${registeredTeams.length} Team${registeredTeams.length === 1 ? '' : 's'} Registered` : 'Coming Soon'}</strong>
+              <p>Submitted teams appear here instantly and remain pending until management verification is complete.</p>
             </div>
             <button type="button" onClick={() => setPage('registration')}>
               Register Team
             </button>
           </div>
+          {registeredTeams.length > 0 && (
+            <div className="registered-team-list">
+              {registeredTeams.map((team) => (
+                <article key={`${team.teamName}-${team.submittedAt}`} className="registered-team-card">
+                  <span>{team.status}</span>
+                  <h3>{team.teamName}</h3>
+                  <p>Captain: {team.captainName} | Vice Captain: {team.viceCaptainName}</p>
+                  <small>{team.players.length} player{team.players.length === 1 ? '' : 's'} submitted</small>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         <div className="sponsors">
@@ -534,9 +610,37 @@ function App() {
 
           <form
             className="registration-form"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault()
-              setRegistrationStatus('Team registration submitted for management verification.')
+              const payload = buildRegistrationPayload(event.currentTarget)
+
+              if (payload.players.length === 0) {
+                setRegistrationStatus('Add at least one player before submitting.')
+                return
+              }
+
+              const nextTeams = [payload, ...registeredTeams]
+              setRegisteredTeams(nextTeams)
+              window.localStorage.setItem('hcplRegisteredTeams', JSON.stringify(nextTeams))
+
+              if (teamRegistrationWebhookUrl) {
+                try {
+                  await fetch(teamRegistrationWebhookUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                      'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload),
+                  })
+                  setRegistrationStatus('Team registration submitted for management verification and sent to Google Sheets.')
+                } catch {
+                  setRegistrationStatus('Team saved on this device. Google Sheets submission could not be confirmed.')
+                }
+              } else {
+                setRegistrationStatus('Team saved on this device. Add VITE_TEAM_REGISTRATION_WEBHOOK_URL to send it to Google Sheets.')
+              }
+
               event.currentTarget.reset()
             }}
           >
@@ -577,7 +681,7 @@ function App() {
                     <legend>Player {index + 1}</legend>
                     <label>
                       Player Name
-                      <input name={`player-${index + 1}-name`} type="text" placeholder="Full name" required />
+                      <input name={`player-${index + 1}-name`} type="text" placeholder="Full name" />
                     </label>
                     <label>
                       Aadhaar Card Number
@@ -588,7 +692,6 @@ function App() {
                         pattern="[0-9]{12}"
                         maxLength="12"
                         placeholder="12 digit Aadhaar number"
-                        required
                       />
                     </label>
                   </fieldset>

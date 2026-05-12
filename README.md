@@ -39,6 +39,44 @@ The home page expects JSON like this:
 }
 ```
 
+## Team Registration Google Sheet
+
+Team registrations are saved locally in the browser immediately and can also be sent to Google Sheets through a Google Apps Script web app. Set this in `.env.local`:
+```bash
+NEXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+VITE_TEAM_REGISTRATION_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+```
+
+`NEXT_PUBLIC_APPS_SCRIPT_URL` is the preferred deployment variable. `VITE_TEAM_REGISTRATION_WEBHOOK_URL` is kept as a fallback.
+
+Connect the Apps Script to this spreadsheet:
+```text
+https://docs.google.com/spreadsheets/d/1tBXBpebHrXQ65XV5QUstK_KOlpxsEsbnXMxglEFGobA/edit?usp=sharing
+```
+
+Example Apps Script:
+```javascript
+const SHEET_ID = '1tBXBpebHrXQ65XV5QUstK_KOlpxsEsbnXMxglEFGobA'
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents)
+  const sheet = SpreadsheetApp.openById(SHEET_ID).getSheets()[0]
+
+  sheet.appendRow([
+    data.submittedAt,
+    data.status,
+    data.teamName,
+    data.captainName,
+    data.captainNumber,
+    data.viceCaptainName,
+    data.viceCaptainNumber,
+    JSON.stringify(data.players),
+  ])
+
+  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+}
+```
+
 ## Build
 
 To build the project:
