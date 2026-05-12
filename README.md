@@ -77,6 +77,18 @@ function doPost(e) {
 }
 ```
 
+## Temporary Admin Panel
+
+The app now includes a temporary admin panel that reads the locally stored registration submissions from the browser and shows them in a review dashboard.
+
+Default credentials:
+```bash
+NEXT_PUBLIC_ADMIN_USERNAME=admin
+NEXT_PUBLIC_ADMIN_PASSWORD=hcpladmin123
+```
+
+This login is client-side only and is meant as a temporary management view until a proper backend-authenticated admin system is added.
+
 ## Build
 
 To build the project:

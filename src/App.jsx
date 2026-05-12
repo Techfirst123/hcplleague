@@ -5,6 +5,8 @@ const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
 const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
 const teamRegistrationWebhookUrl = import.meta.env.NEXT_PUBLIC_APPS_SCRIPT_URL || import.meta.env.VITE_TEAM_REGISTRATION_WEBHOOK_URL
 const teamRegistrationSheetUrl = 'https://docs.google.com/spreadsheets/d/1tBXBpebHrXQ65XV5QUstK_KOlpxsEsbnXMxglEFGobA/edit?usp=sharing'
+const adminUsername = import.meta.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
+const adminPassword = import.meta.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'hcpladmin123'
 
 const fallbackMatch = {
   title: 'HCPL Live Match',
@@ -57,16 +59,6 @@ const matchCenterData = {
 }
 
 const contentPages = {
-  teams: {
-    kicker: 'Teams',
-    title: 'Verified Teams',
-    intro: 'Team names will appear here after registration documents and squad details are verified by management.',
-    cards: [
-      { title: 'Team 1', value: 'Coming Soon', meta: 'Verification pending' },
-      { title: 'Team 2', value: 'Coming Soon', meta: 'Verification pending' },
-      { title: 'Team 3', value: 'Coming Soon', meta: 'Verification pending' },
-    ],
-  },
   sponsors: {
     kicker: 'Sponsors',
     title: 'Sponsors and Partners',
@@ -322,8 +314,18 @@ function getStoredTeams() {
   }
 }
 
+function getStoredAdminAuth() {
+  return window.localStorage.getItem('hcplAdminAuthenticated') === 'true'
+}
+
+function saveStoredTeams(teams) {
+  window.localStorage.setItem('hcplRegisteredTeams', JSON.stringify(teams))
+}
+
 function buildRegistrationPayload(form) {
   const formData = new FormData(form)
+  const sponsorPaid = formData.get('sponsorPaid') === 'yes'
+  const teamLogoFile = formData.get('teamLogo')
   const players = Array.from({ length: 15 }, (_, index) => {
     const playerNumber = index + 1
     const name = formData.get(`player-${playerNumber}-name`)?.toString().trim()
@@ -349,8 +351,187 @@ function buildRegistrationPayload(form) {
     captainNumber: formData.get('captainNumber')?.toString().trim(),
     viceCaptainName: formData.get('viceCaptainName')?.toString().trim(),
     viceCaptainNumber: formData.get('viceCaptainNumber')?.toString().trim(),
+    sponsorPaid,
+    teamLogoName: sponsorPaid && teamLogoFile && typeof teamLogoFile === 'object' && 'name' in teamLogoFile ? teamLogoFile.name : '',
     players,
   }
+}
+
+function TeamsPage({ registeredTeams }) {
+  const verifiedTeams = registeredTeams.filter((team) => team.status === 'Verified')
+
+  return (
+    <main className="info-page">
+      <section className="info-hero">
+        <span className="section-kicker">Teams</span>
+        <h2>Verified Teams</h2>
+        <p>Teams appear here automatically after management verification in the admin panel.</p>
+      </section>
+
+      {verifiedTeams.length > 0 ? (
+        <section className="verified-team-grid">
+          {verifiedTeams.map((team) => (
+            <article key={`${team.teamName}-${team.submittedAt}`} className="verified-team-card">
+              <span>{team.status}</span>
+              <h3>{team.teamName}</h3>
+              <p>Captain: {team.captainName}</p>
+              <p>Vice Captain: {team.viceCaptainName}</p>
+              <p>Sponsor Payment: {team.sponsorPaid ? 'Paid' : 'Not paid'}</p>
+              {team.teamLogoName && <p>Logo: {team.teamLogoName}</p>}
+              <small>{team.players.length} player{team.players.length === 1 ? '' : 's'} verified</small>
+            </article>
+          ))}
+        </section>
+      ) : (
+        <section className="admin-empty-state">
+          <h3>No verified teams yet</h3>
+          <p>Create a team from Registration, then verify it in Admin and it will appear here automatically.</p>
+        </section>
+      )}
+    </main>
+  )
+}
+
+function AdminPanel({
+  adminForm,
+  adminError,
+  isAdminAuthenticated,
+  onAdminInputChange,
+  onAdminLogin,
+  onAdminLogout,
+  onUpdateTeamStatus,
+  registeredTeams,
+}) {
+  if (!isAdminAuthenticated) {
+    return (
+      <main className="admin-page">
+        <section className="admin-login-shell">
+          <div className="admin-login-copy">
+            <span className="section-kicker">Admin Panel</span>
+            <h2>Management Login</h2>
+            <p>Use the temporary admin credentials to review team registrations, captain details, and player Aadhaar submissions.</p>
+          </div>
+
+          <form className="admin-login-form" onSubmit={onAdminLogin}>
+            <label>
+              Username
+              <input
+                name="username"
+                type="text"
+                value={adminForm.username}
+                onChange={onAdminInputChange}
+                placeholder="Enter username"
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                name="password"
+                type="password"
+                value={adminForm.password}
+                onChange={onAdminInputChange}
+                placeholder="Enter password"
+                required
+              />
+            </label>
+            <button type="submit">Login to Admin</button>
+            {adminError && <p role="alert">{adminError}</p>}
+          </form>
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <main className="admin-page">
+      <section className="admin-hero">
+        <div>
+          <span className="section-kicker">Admin Panel</span>
+          <h2>Registration Review Dashboard</h2>
+          <p>Temporary local dashboard for management to inspect submitted teams before the full Google Sheets workflow is finalized.</p>
+        </div>
+        <button type="button" className="admin-logout" onClick={onAdminLogout}>
+          Logout
+        </button>
+      </section>
+
+      <section className="admin-summary">
+        <article className="admin-summary-card">
+          <span>Total Registrations</span>
+          <strong>{registeredTeams.length}</strong>
+          <p>Teams currently stored for review</p>
+        </article>
+        <article className="admin-summary-card">
+          <span>Pending Verification</span>
+          <strong>{registeredTeams.filter((team) => team.status === 'Pending management verification').length}</strong>
+          <p>Awaiting management approval</p>
+        </article>
+        <article className="admin-summary-card">
+          <span>Players Submitted</span>
+          <strong>{registeredTeams.reduce((total, team) => total + team.players.length, 0)}</strong>
+          <p>Total player records collected</p>
+        </article>
+      </section>
+
+      <section className="admin-table-panel">
+        <div className="block-heading">
+          <h3>Team Registrations</h3>
+          <span>{registeredTeams.length > 0 ? 'Live local data' : 'No submissions yet'}</span>
+        </div>
+        {registeredTeams.length > 0 ? (
+          <div className="admin-team-list">
+            {registeredTeams.map((team) => (
+              <article key={`${team.teamName}-${team.submittedAt}`} className="admin-team-card">
+                <div className="admin-team-card-header">
+                  <div>
+                    <h3>{team.teamName}</h3>
+                    <p>{team.status}</p>
+                  </div>
+                  <small>{new Date(team.submittedAt).toLocaleString()}</small>
+                </div>
+                <div className="admin-team-meta">
+                  <p><strong>Captain:</strong> {team.captainName} ({team.captainNumber})</p>
+                  <p><strong>Vice Captain:</strong> {team.viceCaptainName} ({team.viceCaptainNumber})</p>
+                  <p><strong>Players:</strong> {team.players.length}</p>
+                  <p><strong>Sponsor Payment:</strong> {team.sponsorPaid ? 'Paid' : 'Not paid'}</p>
+                  <p><strong>Logo:</strong> {team.teamLogoName || 'Not uploaded'}</p>
+                </div>
+                <div className="admin-team-actions">
+                  {team.status === 'Verified' ? (
+                    <button type="button" className="verified" disabled>
+                      Verified
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => onUpdateTeamStatus(team.submittedAt, 'Verified')}>
+                      Verify Team
+                    </button>
+                  )}
+                  <button type="button" className="secondary" onClick={() => onUpdateTeamStatus(team.submittedAt, 'Pending management verification')}>
+                    Mark Pending
+                  </button>
+                </div>
+                <div className="admin-player-grid">
+                  {team.players.map((player) => (
+                    <div key={`${team.teamName}-${player.playerNumber}`} className="admin-player-card">
+                      <span>Player {player.playerNumber}</span>
+                      <strong>{player.name || 'Name not added'}</strong>
+                      <p>Aadhaar: {player.aadhaar || 'Not provided'}</p>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-empty-state">
+            <h3>No registrations yet</h3>
+            <p>Once a team submits the registration form, it will appear here for management review.</p>
+          </div>
+        )}
+      </section>
+    </main>
+  )
 }
 
 function App() {
@@ -362,11 +543,26 @@ function App() {
   const [liveMatch, setLiveMatch] = useState(fallbackMatch)
   const [registrationStatus, setRegistrationStatus] = useState('')
   const [registeredTeams, setRegisteredTeams] = useState([])
+  const [adminForm, setAdminForm] = useState({ username: '', password: '' })
+  const [adminError, setAdminError] = useState('')
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [sponsorPaid, setSponsorPaid] = useState(false)
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
 
   useEffect(() => {
     setRegisteredTeams(getStoredTeams())
+    setIsAdminAuthenticated(getStoredAdminAuth())
+  }, [])
+
+  useEffect(() => {
+    function handleStorageSync() {
+      setRegisteredTeams(getStoredTeams())
+      setIsAdminAuthenticated(getStoredAdminAuth())
+    }
+
+    window.addEventListener('storage', handleStorageSync)
+    return () => window.removeEventListener('storage', handleStorageSync)
   }, [])
 
   useEffect(() => {
@@ -421,17 +617,26 @@ function App() {
             </div>
           </div>
         </div>
-        <nav className="main-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              className={page === item.id ? 'nav-button active' : 'nav-button'}
-              onClick={() => setPage(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <div className="header-actions">
+          <button
+            type="button"
+            className={page === 'admin' ? 'admin-mini-button active' : 'admin-mini-button'}
+            onClick={() => setPage('admin')}
+          >
+            Admin
+          </button>
+          <nav className="main-nav">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                className={page === item.id ? 'nav-button active' : 'nav-button'}
+                onClick={() => setPage(item.id)}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
       </header>
       
       {page === 'home' ? (
@@ -619,9 +824,20 @@ function App() {
                 return
               }
 
+              const playerNames = payload.players.map((player) => player.name).filter(Boolean)
+              if (!playerNames.includes(payload.captainName) || !playerNames.includes(payload.viceCaptainName)) {
+                setRegistrationStatus('Captain and vice captain must both be included in the player list before submission.')
+                return
+              }
+
+              if (payload.sponsorPaid && !payload.teamLogoName) {
+                setRegistrationStatus('Upload a team logo when sponsor payment is marked yes.')
+                return
+              }
+
               const nextTeams = [payload, ...registeredTeams]
               setRegisteredTeams(nextTeams)
-              window.localStorage.setItem('hcplRegisteredTeams', JSON.stringify(nextTeams))
+              saveStoredTeams(nextTeams)
 
               if (teamRegistrationWebhookUrl) {
                 try {
@@ -638,9 +854,10 @@ function App() {
                   setRegistrationStatus('Team saved on this device. Google Sheets submission could not be confirmed.')
                 }
               } else {
-                setRegistrationStatus('Team saved on this device. Add VITE_TEAM_REGISTRATION_WEBHOOK_URL to send it to Google Sheets.')
+                setRegistrationStatus('Team saved on this device. Add NEXT_PUBLIC_APPS_SCRIPT_URL to send it to Google Sheets.')
               }
 
+              setSponsorPaid(false)
               event.currentTarget.reset()
             }}
           >
@@ -667,6 +884,35 @@ function App() {
                   Vice Captain Number
                   <input name="viceCaptainNumber" type="tel" placeholder="+91 XXXXX XXXXX" required />
                 </label>
+                <fieldset className="sponsor-payment-group">
+                  <legend>I have paid the sponsor money</legend>
+                  <label className="inline-choice">
+                    <input
+                      name="sponsorPaid"
+                      type="radio"
+                      value="yes"
+                      checked={sponsorPaid}
+                      onChange={() => setSponsorPaid(true)}
+                    />
+                    Yes
+                  </label>
+                  <label className="inline-choice">
+                    <input
+                      name="sponsorPaid"
+                      type="radio"
+                      value="no"
+                      checked={!sponsorPaid}
+                      onChange={() => setSponsorPaid(false)}
+                    />
+                    No
+                  </label>
+                </fieldset>
+                {sponsorPaid && (
+                  <label>
+                    Team Logo
+                    <input name="teamLogo" type="file" accept="image/*" />
+                  </label>
+                )}
               </div>
             </section>
 
@@ -705,6 +951,44 @@ function App() {
             </div>
           </form>
         </main>
+      ) : page === 'admin' ? (
+        <AdminPanel
+          adminForm={adminForm}
+          adminError={adminError}
+          isAdminAuthenticated={isAdminAuthenticated}
+          onAdminInputChange={(event) => {
+            const { name, value } = event.target
+            setAdminForm((current) => ({ ...current, [name]: value }))
+          }}
+          onAdminLogin={(event) => {
+            event.preventDefault()
+
+            if (adminForm.username === adminUsername && adminForm.password === adminPassword) {
+              setIsAdminAuthenticated(true)
+              setAdminError('')
+              window.localStorage.setItem('hcplAdminAuthenticated', 'true')
+              return
+            }
+
+            setAdminError('Incorrect username or password.')
+          }}
+          onAdminLogout={() => {
+            setIsAdminAuthenticated(false)
+            setAdminError('')
+            setAdminForm({ username: '', password: '' })
+            window.localStorage.removeItem('hcplAdminAuthenticated')
+          }}
+          onUpdateTeamStatus={(submittedAt, status) => {
+            const nextTeams = registeredTeams.map((team) =>
+              team.submittedAt === submittedAt ? { ...team, status } : team,
+            )
+            setRegisteredTeams(nextTeams)
+            saveStoredTeams(nextTeams)
+          }}
+          registeredTeams={registeredTeams}
+        />
+      ) : page === 'teams' ? (
+        <TeamsPage registeredTeams={registeredTeams} />
       ) : (
         <InfoPage pageData={contentPages[page]} />
       )}
