@@ -899,6 +899,69 @@ body {
   margin-top: 1rem;
 }
 
+.admin-action-message {
+  margin-top: 1rem;
+  color: #0f6b4b;
+  font-weight: 900;
+}
+
+.admin-edit-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid rgba(18, 36, 57, 0.08);
+}
+
+.admin-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-edit-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: #304459;
+  font-weight: 900;
+}
+
+.admin-edit-panel input,
+.admin-edit-panel select,
+.admin-edit-panel textarea {
+  width: 100%;
+  min-height: 2.85rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #d8e0e8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #13243a;
+  font: inherit;
+}
+
+.admin-edit-panel textarea {
+  min-height: 10rem;
+  resize: vertical;
+}
+
+.admin-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 1.9rem;
+}
+
+.admin-checkbox input {
+  width: auto;
+  min-height: auto;
+}
+
+.admin-players-editor {
+  margin-top: 1rem;
+}
+
 .admin-team-card {
   padding: 1rem;
   border-radius: 8px;
@@ -979,6 +1042,14 @@ body {
 .admin-team-actions .verified:hover {
   background: #dff5e8;
   transform: none;
+}
+
+.admin-team-actions .danger {
+  background: #b42318;
+}
+
+.admin-team-actions .danger:hover {
+  background: #912018;
 }
 
 .admin-player-grid {
@@ -1707,6 +1778,10 @@ body {
   .admin-team-meta,
   .admin-player-grid,
   .verified-team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-edit-grid {
     grid-template-columns: 1fr;
   }
 

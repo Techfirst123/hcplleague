@@ -322,6 +322,39 @@ function saveStoredTeams(teams) {
   window.localStorage.setItem('hcplRegisteredTeams', JSON.stringify(teams))
 }
 
+function createAdminEditForm(team) {
+  return {
+    submittedAt: team.submittedAt,
+    teamName: team.teamName || '',
+    captainName: team.captainName || '',
+    captainNumber: team.captainNumber || '',
+    viceCaptainName: team.viceCaptainName || '',
+    viceCaptainNumber: team.viceCaptainNumber || '',
+    status: team.status || 'Pending management verification',
+    sponsorPaid: Boolean(team.sponsorPaid),
+    teamLogoName: team.teamLogoName || '',
+    playersText: (team.players || [])
+      .map((player) => `${player.name || ''} | ${player.aadhaar || ''}`)
+      .join('\n'),
+  }
+}
+
+function parseAdminPlayers(playersText) {
+  return playersText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [namePart, aadhaarPart = ''] = line.split('|')
+      return {
+        playerNumber: index + 1,
+        name: namePart.trim(),
+        aadhaar: aadhaarPart.trim(),
+      }
+    })
+    .filter((player) => player.name || player.aadhaar)
+}
+
 function buildRegistrationPayload(form) {
   const formData = new FormData(form)
   const sponsorPaid = formData.get('sponsorPaid') === 'yes'
@@ -393,12 +426,18 @@ function TeamsPage({ registeredTeams }) {
 }
 
 function AdminPanel({
+  adminActionMessage,
+  adminEditForm,
   adminForm,
   adminError,
   isAdminAuthenticated,
+  onAdminDeleteTeam,
+  onAdminEditChange,
   onAdminInputChange,
   onAdminLogin,
   onAdminLogout,
+  onAdminSaveEdit,
+  onAdminSelectTeam,
   onUpdateTeamStatus,
   registeredTeams,
 }) {
@@ -479,6 +518,70 @@ function AdminPanel({
           <h3>Team Registrations</h3>
           <span>{registeredTeams.length > 0 ? 'Live local data' : 'No submissions yet'}</span>
         </div>
+        {adminActionMessage && <p className="admin-action-message">{adminActionMessage}</p>}
+        {adminEditForm && (
+          <form className="admin-edit-panel" onSubmit={onAdminSaveEdit}>
+            <div className="block-heading">
+              <h3>Edit Team</h3>
+              <span>{adminEditForm.teamName || 'Draft update'}</span>
+            </div>
+            <div className="admin-edit-grid">
+              <label>
+                Team Name
+                <input name="teamName" type="text" value={adminEditForm.teamName} onChange={onAdminEditChange} required />
+              </label>
+              <label>
+                Captain Name
+                <input name="captainName" type="text" value={adminEditForm.captainName} onChange={onAdminEditChange} required />
+              </label>
+              <label>
+                Captain Number
+                <input name="captainNumber" type="tel" value={adminEditForm.captainNumber} onChange={onAdminEditChange} required />
+              </label>
+              <label>
+                Vice Captain Name
+                <input name="viceCaptainName" type="text" value={adminEditForm.viceCaptainName} onChange={onAdminEditChange} required />
+              </label>
+              <label>
+                Vice Captain Number
+                <input name="viceCaptainNumber" type="tel" value={adminEditForm.viceCaptainNumber} onChange={onAdminEditChange} required />
+              </label>
+              <label>
+                Status
+                <select name="status" value={adminEditForm.status} onChange={onAdminEditChange}>
+                  <option value="Pending management verification">Pending management verification</option>
+                  <option value="Verified">Verified</option>
+                </select>
+              </label>
+              <label className="admin-checkbox">
+                <input
+                  name="sponsorPaid"
+                  type="checkbox"
+                  checked={adminEditForm.sponsorPaid}
+                  onChange={onAdminEditChange}
+                />
+                Sponsor payment received
+              </label>
+              <label>
+                Team Logo Name
+                <input name="teamLogoName" type="text" value={adminEditForm.teamLogoName} onChange={onAdminEditChange} />
+              </label>
+            </div>
+            <label className="admin-players-editor">
+              Players
+              <textarea
+                name="playersText"
+                value={adminEditForm.playersText}
+                onChange={onAdminEditChange}
+                rows="8"
+                placeholder="One player per line: Name | Aadhaar"
+              />
+            </label>
+            <div className="admin-team-actions">
+              <button type="submit">Save Team Update</button>
+            </div>
+          </form>
+        )}
         {registeredTeams.length > 0 ? (
           <div className="admin-team-list">
             {registeredTeams.map((team) => (
@@ -498,6 +601,9 @@ function AdminPanel({
                   <p><strong>Logo:</strong> {team.teamLogoName || 'Not uploaded'}</p>
                 </div>
                 <div className="admin-team-actions">
+                  <button type="button" className="secondary" onClick={() => onAdminSelectTeam(team)}>
+                    Edit Team
+                  </button>
                   {team.status === 'Verified' ? (
                     <button type="button" className="verified" disabled>
                       Verified
@@ -509,6 +615,9 @@ function AdminPanel({
                   )}
                   <button type="button" className="secondary" onClick={() => onUpdateTeamStatus(team.submittedAt, 'Pending management verification')}>
                     Mark Pending
+                  </button>
+                  <button type="button" className="danger" onClick={() => onAdminDeleteTeam(team.submittedAt)}>
+                    Delete Team
                   </button>
                 </div>
                 <div className="admin-player-grid">
@@ -543,6 +652,8 @@ function App() {
   const [liveMatch, setLiveMatch] = useState(fallbackMatch)
   const [registrationStatus, setRegistrationStatus] = useState('')
   const [registeredTeams, setRegisteredTeams] = useState([])
+  const [adminActionMessage, setAdminActionMessage] = useState('')
+  const [adminEditForm, setAdminEditForm] = useState(null)
   const [adminForm, setAdminForm] = useState({ username: '', password: '' })
   const [adminError, setAdminError] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
@@ -967,9 +1078,28 @@ function App() {
         </main>
       ) : page === 'admin' ? (
         <AdminPanel
+          adminActionMessage={adminActionMessage}
+          adminEditForm={adminEditForm}
           adminForm={adminForm}
           adminError={adminError}
           isAdminAuthenticated={isAdminAuthenticated}
+          onAdminDeleteTeam={(submittedAt) => {
+            const nextTeams = registeredTeams.filter((team) => team.submittedAt !== submittedAt)
+            setRegisteredTeams(nextTeams)
+            saveStoredTeams(nextTeams)
+            if (adminEditForm?.submittedAt === submittedAt) {
+              setAdminEditForm(null)
+            }
+            setAdminActionMessage('Team deleted from the admin dashboard.')
+          }}
+          onAdminEditChange={(event) => {
+            const { name, type, value, checked } = event.target
+            setAdminEditForm((current) => (
+              current
+                ? { ...current, [name]: type === 'checkbox' ? checked : value }
+                : current
+            ))
+          }}
           onAdminInputChange={(event) => {
             const { name, value } = event.target
             setAdminForm((current) => ({ ...current, [name]: value }))
@@ -980,6 +1110,7 @@ function App() {
             if (adminForm.username === adminUsername && adminForm.password === adminPassword) {
               setIsAdminAuthenticated(true)
               setAdminError('')
+              setAdminActionMessage('')
               window.localStorage.setItem('hcplAdminAuthenticated', 'true')
               return
             }
@@ -989,8 +1120,61 @@ function App() {
           onAdminLogout={() => {
             setIsAdminAuthenticated(false)
             setAdminError('')
+            setAdminActionMessage('')
+            setAdminEditForm(null)
             setAdminForm({ username: '', password: '' })
             window.localStorage.removeItem('hcplAdminAuthenticated')
+          }}
+          onAdminSaveEdit={(event) => {
+            event.preventDefault()
+
+            if (!adminEditForm) {
+              return
+            }
+
+            const players = parseAdminPlayers(adminEditForm.playersText)
+            const playerNames = players.map((player) => player.name).filter(Boolean)
+
+            if (!players.length) {
+              setAdminActionMessage('Add at least one player before saving the team update.')
+              return
+            }
+
+            if (!playerNames.includes(adminEditForm.captainName) || !playerNames.includes(adminEditForm.viceCaptainName)) {
+              setAdminActionMessage('Captain and vice captain must both exist in the player list before saving.')
+              return
+            }
+
+            if (adminEditForm.sponsorPaid && !adminEditForm.teamLogoName.trim()) {
+              setAdminActionMessage('Add a team logo name when sponsor payment is marked received.')
+              return
+            }
+
+            const nextTeams = registeredTeams.map((team) =>
+              team.submittedAt === adminEditForm.submittedAt
+                ? {
+                    ...team,
+                    teamName: adminEditForm.teamName.trim(),
+                    captainName: adminEditForm.captainName.trim(),
+                    captainNumber: adminEditForm.captainNumber.trim(),
+                    viceCaptainName: adminEditForm.viceCaptainName.trim(),
+                    viceCaptainNumber: adminEditForm.viceCaptainNumber.trim(),
+                    status: adminEditForm.status,
+                    sponsorPaid: adminEditForm.sponsorPaid,
+                    teamLogoName: adminEditForm.sponsorPaid ? adminEditForm.teamLogoName.trim() : '',
+                    players,
+                  }
+                : team,
+            )
+
+            setRegisteredTeams(nextTeams)
+            saveStoredTeams(nextTeams)
+            setAdminEditForm(null)
+            setAdminActionMessage('Team details updated successfully.')
+          }}
+          onAdminSelectTeam={(team) => {
+            setAdminEditForm(createAdminEditForm(team))
+            setAdminActionMessage('')
           }}
           onUpdateTeamStatus={(submittedAt, status) => {
             const nextTeams = registeredTeams.map((team) =>
@@ -998,6 +1182,13 @@ function App() {
             )
             setRegisteredTeams(nextTeams)
             saveStoredTeams(nextTeams)
+            if (adminEditForm?.submittedAt === submittedAt) {
+              const updatedTeam = nextTeams.find((team) => team.submittedAt === submittedAt)
+              if (updatedTeam) {
+                setAdminEditForm(createAdminEditForm(updatedTeam))
+              }
+            }
+            setAdminActionMessage(status === 'Verified' ? 'Team verified successfully.' : 'Team moved back to pending verification.')
           }}
           registeredTeams={registeredTeams}
         />
