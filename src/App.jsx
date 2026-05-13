@@ -355,6 +355,255 @@ function parseAdminPlayers(playersText) {
     .filter((player) => player.name || player.aadhaar)
 }
 
+function escapeCsvValue(value) {
+  const text = String(value ?? '')
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function formatTeamExportDate(value) {
+  try {
+    return new Date(value).toLocaleString('en-IN')
+  } catch {
+    return value
+  }
+}
+
+function buildTeamExportRows(teams) {
+  return teams.map((team) => ({
+    teamName: team.teamName || '',
+    status: team.status || '',
+    captainName: team.captainName || '',
+    captainNumber: team.captainNumber || '',
+    viceCaptainName: team.viceCaptainName || '',
+    viceCaptainNumber: team.viceCaptainNumber || '',
+    sponsorPaid: team.sponsorPaid ? 'Yes' : 'No',
+    teamLogoName: team.teamLogoName || '',
+    submittedAt: formatTeamExportDate(team.submittedAt),
+    playerCount: team.players?.length || 0,
+    players: (team.players || [])
+      .map((player) => `P${player.playerNumber}: ${player.name || 'NA'} (${player.aadhaar || 'NA'})`)
+      .join(' | '),
+  }))
+}
+
+function downloadTeamExcel(teams) {
+  if (!teams.length) {
+    return 'No team data available to export.'
+  }
+
+  const headers = [
+    'Team Name',
+    'Status',
+    'Captain Name',
+    'Captain Number',
+    'Vice Captain Name',
+    'Vice Captain Number',
+    'Sponsor Paid',
+    'Team Logo',
+    'Submitted At',
+    'Player Count',
+    'Players',
+  ]
+
+  const rows = buildTeamExportRows(teams)
+  const csv = [
+    headers.map(escapeCsvValue).join(','),
+    ...rows.map((row) => (
+      [
+        row.teamName,
+        row.status,
+        row.captainName,
+        row.captainNumber,
+        row.viceCaptainName,
+        row.viceCaptainNumber,
+        row.sponsorPaid,
+        row.teamLogoName,
+        row.submittedAt,
+        row.playerCount,
+        row.players,
+      ].map(escapeCsvValue).join(',')
+    )),
+  ].join('\n')
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `hcpl-team-export-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(link.href)
+  return 'Excel export downloaded successfully.'
+}
+
+function openTeamPdfExport(teams) {
+  if (!teams.length) {
+    return 'No team data available to export.'
+  }
+
+  const exportWindow = window.open('', '_blank', 'width=1200,height=900')
+  if (!exportWindow) {
+    return 'Allow pop-ups to open the PDF export preview.'
+  }
+
+  const generatedAt = formatTeamExportDate(new Date().toISOString())
+  const teamSections = teams.map((team) => `
+    <section class="team-card">
+      <div class="team-header">
+        <div>
+          <h2>${escapeHtml(team.teamName || 'Unnamed Team')}</h2>
+          <p>Status: ${escapeHtml(team.status || 'Pending management verification')}</p>
+        </div>
+        <span>Submitted: ${escapeHtml(formatTeamExportDate(team.submittedAt))}</span>
+      </div>
+      <div class="team-meta">
+        <div><strong>Captain</strong><span>${escapeHtml(team.captainName || '-')} (${escapeHtml(team.captainNumber || '-')})</span></div>
+        <div><strong>Vice Captain</strong><span>${escapeHtml(team.viceCaptainName || '-')} (${escapeHtml(team.viceCaptainNumber || '-')})</span></div>
+        <div><strong>Sponsor Paid</strong><span>${team.sponsorPaid ? 'Yes' : 'No'}</span></div>
+        <div><strong>Team Logo</strong><span>${escapeHtml(team.teamLogoName || 'Not uploaded')}</span></div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Player No.</th>
+            <th>Name</th>
+            <th>Aadhaar</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(team.players || []).map((player) => `
+            <tr>
+              <td>${escapeHtml(player.playerNumber)}</td>
+              <td>${escapeHtml(player.name || '-')}</td>
+              <td>${escapeHtml(player.aadhaar || '-')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </section>
+  `).join('')
+
+  exportWindow.document.write(`
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <title>HCPL Team Export</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 32px;
+            color: #13243a;
+            background: #ffffff;
+          }
+          .report-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 24px;
+          }
+          .report-header h1 {
+            margin: 0;
+            font-size: 28px;
+          }
+          .report-header p {
+            margin: 8px 0 0;
+            color: #526275;
+          }
+          .team-card {
+            border: 1px solid #d8e0e8;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            break-inside: avoid;
+          }
+          .team-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+          }
+          .team-header h2 {
+            margin: 0;
+            font-size: 22px;
+          }
+          .team-header p,
+          .team-header span {
+            margin: 6px 0 0;
+            color: #526275;
+          }
+          .team-meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+          }
+          .team-meta div {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f8fafc;
+          }
+          .team-meta strong,
+          .team-meta span {
+            display: block;
+          }
+          .team-meta strong {
+            margin-bottom: 6px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          th,
+          td {
+            padding: 10px 12px;
+            border: 1px solid #d8e0e8;
+            text-align: left;
+            vertical-align: top;
+          }
+          th {
+            background: #eff4f8;
+          }
+          @media print {
+            body {
+              margin: 18px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <header class="report-header">
+          <div>
+            <h1>HCPL Team Registration Export</h1>
+            <p>Generated from the admin panel on ${escapeHtml(generatedAt)}</p>
+          </div>
+          <div>
+            <strong>Total Teams:</strong> ${teams.length}
+          </div>
+        </header>
+        ${teamSections}
+        <script>
+          window.onload = function () {
+            window.print();
+          };
+        </script>
+      </body>
+    </html>
+  `)
+  exportWindow.document.close()
+  return 'PDF export opened in a new window. Choose Save as PDF in the print dialog.'
+}
+
 function buildRegistrationPayload(form) {
   const formData = new FormData(form)
   const sponsorPaid = formData.get('sponsorPaid') === 'yes'
@@ -433,6 +682,8 @@ function AdminPanel({
   isAdminAuthenticated,
   onAdminDeleteTeam,
   onAdminEditChange,
+  onAdminExportExcel,
+  onAdminExportPdf,
   onAdminInputChange,
   onAdminLogin,
   onAdminLogout,
@@ -514,9 +765,19 @@ function AdminPanel({
       </section>
 
       <section className="admin-table-panel">
-        <div className="block-heading">
-          <h3>Team Registrations</h3>
-          <span>{registeredTeams.length > 0 ? 'Live local data' : 'No submissions yet'}</span>
+        <div className="block-heading admin-panel-heading">
+          <div>
+            <h3>Team Registrations</h3>
+            <span>{registeredTeams.length > 0 ? 'Live local data' : 'No submissions yet'}</span>
+          </div>
+          <div className="admin-export-actions">
+            <button type="button" className="secondary" onClick={onAdminExportExcel}>
+              Export Excel
+            </button>
+            <button type="button" className="secondary" onClick={onAdminExportPdf}>
+              Export PDF
+            </button>
+          </div>
         </div>
         {adminActionMessage && <p className="admin-action-message">{adminActionMessage}</p>}
         {adminEditForm && (
@@ -1099,6 +1360,12 @@ function App() {
                 ? { ...current, [name]: type === 'checkbox' ? checked : value }
                 : current
             ))
+          }}
+          onAdminExportExcel={() => {
+            setAdminActionMessage(downloadTeamExcel(registeredTeams))
+          }}
+          onAdminExportPdf={() => {
+            setAdminActionMessage(openTeamPdfExport(registeredTeams))
           }}
           onAdminInputChange={(event) => {
             const { name, value } = event.target

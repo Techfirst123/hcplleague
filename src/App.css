@@ -905,6 +905,37 @@ body {
   font-weight: 900;
 }
 
+.admin-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.admin-export-actions button {
+  min-height: 2.45rem;
+  padding: 0.6rem 0.95rem;
+  border: 1px solid #d8e0e8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #304459;
+  cursor: pointer;
+  font-weight: 900;
+  transition: background 150ms ease, transform 150ms ease, border-color 150ms ease;
+}
+
+.admin-export-actions button:hover {
+  background: #f3f7fa;
+  border-color: #c7d3df;
+  transform: translateY(-1px);
+}
+
 .admin-edit-panel {
   margin-top: 1rem;
   padding: 1rem;
@@ -1783,6 +1814,10 @@ body {
 
   .admin-edit-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-panel-heading {
+    flex-direction: column;
   }
 
   .info-page,
