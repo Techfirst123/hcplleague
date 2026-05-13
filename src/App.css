@@ -1106,6 +1106,14 @@ body {
   font-weight: 900;
 }
 
+.field-help,
+.form-note {
+  color: #667789;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .sponsor-payment-group {
   min-width: 0;
   padding: 0.9rem 1rem;
@@ -1168,6 +1176,10 @@ body {
   font-weight: 900;
 }
 
+.form-note {
+  margin-bottom: 1rem;
+}
+
 .player-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1223,6 +1235,20 @@ body {
 }
 
 /* Content Section */
+.home-banner {
+  padding: 1.25rem 2rem 0;
+}
+
+.home-banner img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid rgba(18, 36, 57, 0.08);
+  box-shadow: 0 12px 30px rgba(18, 36, 57, 0.1);
+  background: #ffffff;
+}
+
 .content {
   flex: 1;
   padding: 2rem;
@@ -1621,6 +1647,10 @@ body {
   
   .content {
     padding: 1rem;
+  }
+
+  .home-banner {
+    padding: 1rem 1rem 0;
   }
 
   .team-announcement-header {

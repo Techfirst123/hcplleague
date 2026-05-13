@@ -715,6 +715,16 @@ function App() {
           </div>
         </div>
       </section>
+
+      <section className="home-banner">
+        <img
+          src="/progressive banner.png"
+          alt="HCPL League progressive banner"
+          width="1600"
+          height="500"
+          loading="lazy"
+        />
+      </section>
       
       <section className="content">
         <section className="team-announcement" aria-labelledby="team-announcement-title">
@@ -871,6 +881,7 @@ function App() {
                 <label>
                   Captain Name
                   <input name="captainName" type="text" placeholder="Enter captain name" required />
+                  <small className="field-help">Captain must also be entered again in the player list below.</small>
                 </label>
                 <label>
                   Captain Number
@@ -879,6 +890,7 @@ function App() {
                 <label>
                   Vice Captain Name
                   <input name="viceCaptainName" type="text" placeholder="Enter vice captain name" required />
+                  <small className="field-help">Vice captain must also be entered again in the player list below.</small>
                 </label>
                 <label>
                   Vice Captain Number
@@ -911,6 +923,7 @@ function App() {
                   <label>
                     Team Logo
                     <input name="teamLogo" type="file" accept="image/*" />
+                    <small className="field-help">Logo upload is required when sponsor payment is marked yes.</small>
                   </label>
                 )}
               </div>
@@ -921,6 +934,7 @@ function App() {
                 <h3>Player Details</h3>
                 <span>Maximum 15 players</span>
               </div>
+              <p className="form-note">Add captain and vice captain names inside the player list as part of the team members.</p>
               <div className="player-fields">
                 {Array.from({ length: 15 }, (_, index) => (
                   <fieldset key={index} className="player-fieldset">
