@@ -39,9 +39,44 @@ The home page expects JSON like this:
 }
 ```
 
-## Team Registration Google Sheet
+## Supabase Team Registration
 
-Team registrations are saved locally in the browser immediately and can also be sent to Google Sheets through a Google Apps Script web app. Set this in `.env.local`:
+The registration form now saves teams into Supabase, the admin panel reads all team records from Supabase after login, and the public team sections only show records whose `status` is `Verified`.
+
+Set this in `.env.local`:
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-key
+VITE_SUPABASE_TEAMS_TABLE=teams
+NEXT_PUBLIC_ADMIN_USERNAME=admin
+NEXT_PUBLIC_ADMIN_PASSWORD=hcpladmin123
+```
+
+Expected Supabase table:
+```sql
+create table public.teams (
+  id uuid primary key default gen_random_uuid(),
+  submitted_at timestamptz not null default now(),
+  status text not null default 'Pending management verification',
+  team_name text not null,
+  captain_name text not null,
+  captain_number text not null,
+  vice_captain_name text not null,
+  vice_captain_number text not null,
+  sponsor_paid boolean not null default false,
+  team_logo_name text,
+  players jsonb not null default '[]'::jsonb
+);
+```
+
+If you want public users to see only verified teams, your row-level security policies should allow:
+1. `select` for rows where `status = 'Verified'`
+2. `insert` for new registrations
+3. admin update/delete only through whatever secure flow you decide to use next
+
+## Optional Google Sheets Sync
+
+Supabase is now the main source of truth. You can still mirror each registration to Google Sheets through a Google Apps Script web app. Set this in `.env.local` if you want the extra sync:
 ```bash
 NEXT_PUBLIC_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
 VITE_TEAM_REGISTRATION_WEBHOOK_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
@@ -77,17 +112,11 @@ function doPost(e) {
 }
 ```
 
-## Temporary Admin Panel
+## Admin Panel
 
-The app now includes a temporary admin panel that reads the locally stored registration submissions from the browser and shows them in a review dashboard.
+The current admin login is still client-side env-based, but after login it now fetches all team records from Supabase so management can review, edit, verify, and delete registrations from one place.
 
-Default credentials:
-```bash
-NEXT_PUBLIC_ADMIN_USERNAME=admin
-NEXT_PUBLIC_ADMIN_PASSWORD=hcpladmin123
-```
-
-This login is client-side only and is meant as a temporary management view until a proper backend-authenticated admin system is added.
+This is still a temporary admin auth model. For production, move admin authentication and privileged database writes behind a secure backend or Supabase Auth plus restricted RLS policies.
 
 ## Build
 

@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react'
+import PropTypes from 'prop-types'
+import {
+  createTeamRegistration,
+  deleteTeamRegistration,
+  fetchAllTeams,
+  fetchVerifiedTeams,
+  updateTeamRegistration,
+  updateTeamVerificationStatus,
+} from './lib/teamService'
+import { isSupabaseConfigured, supabaseConfigMessage } from './lib/supabase'
 import './App.css'
 
 const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
 const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
 const teamRegistrationWebhookUrl = import.meta.env.NEXT_PUBLIC_APPS_SCRIPT_URL || import.meta.env.VITE_TEAM_REGISTRATION_WEBHOOK_URL
-const teamRegistrationSheetUrl = 'https://docs.google.com/spreadsheets/d/1tBXBpebHrXQ65XV5QUstK_KOlpxsEsbnXMxglEFGobA/edit?usp=sharing'
 const adminUsername = import.meta.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
 const adminPassword = import.meta.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'hcpladmin123'
+const verifiedTeamStatus = 'Verified'
+const pendingVerificationStatus = 'Pending management verification'
 
 const fallbackMatch = {
   title: 'HCPL Live Match',
@@ -306,31 +317,20 @@ function normalizeLiveMatch(data) {
   }
 }
 
-function getStoredTeams() {
-  try {
-    return JSON.parse(window.localStorage.getItem('hcplRegisteredTeams')) || []
-  } catch {
-    return []
-  }
-}
-
 function getStoredAdminAuth() {
   return window.localStorage.getItem('hcplAdminAuthenticated') === 'true'
 }
 
-function saveStoredTeams(teams) {
-  window.localStorage.setItem('hcplRegisteredTeams', JSON.stringify(teams))
-}
-
 function createAdminEditForm(team) {
   return {
+    id: team.id,
     submittedAt: team.submittedAt,
     teamName: team.teamName || '',
     captainName: team.captainName || '',
     captainNumber: team.captainNumber || '',
     viceCaptainName: team.viceCaptainName || '',
     viceCaptainNumber: team.viceCaptainNumber || '',
-    status: team.status || 'Pending management verification',
+    status: team.status || pendingVerificationStatus,
     sponsorPaid: Boolean(team.sponsorPaid),
     teamLogoName: team.teamLogoName || '',
     playersText: (team.players || [])
@@ -626,8 +626,7 @@ function buildRegistrationPayload(form) {
 
   return {
     submittedAt: new Date().toISOString(),
-    sourceSheet: teamRegistrationSheetUrl,
-    status: 'Pending management verification',
+    status: pendingVerificationStatus,
     teamName: formData.get('teamName')?.toString().trim(),
     captainName: formData.get('captainName')?.toString().trim(),
     captainNumber: formData.get('captainNumber')?.toString().trim(),
@@ -639,9 +638,59 @@ function buildRegistrationPayload(form) {
   }
 }
 
-function TeamsPage({ registeredTeams }) {
-  const verifiedTeams = registeredTeams.filter((team) => team.status === 'Verified')
+function getTeamKey(team) {
+  return team.id || `${team.teamName}-${team.submittedAt}`
+}
 
+function TeamRosterCard({ team, className }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const totalPlayersLabel = `${team.players.length} Player${team.players.length === 1 ? '' : 's'}`
+
+  return (
+    <article className={className}>
+      <div className="team-card-topline">
+        <span className="team-status-badge">{team.status}</span>
+        <span className="team-count-badge">{totalPlayersLabel}</span>
+      </div>
+      <button
+        type="button"
+        className="team-name-toggle"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-expanded={isOpen}
+      >
+        <span className="team-name-copy">
+          <span className="team-name-heading">{team.teamName}</span>
+          <small>{isOpen ? 'Tap to collapse roster' : 'Tap to view full roster'}</small>
+        </span>
+        <span className="team-toggle-icon" aria-hidden="true">
+          {isOpen ? '−' : '+'}
+        </span>
+      </button>
+      <div className="team-meta-list">
+        <p><strong>Captain</strong>{team.captainName}</p>
+        <p><strong>Vice Captain</strong>{team.viceCaptainName}</p>
+        <p><strong>Sponsor</strong>{team.sponsorPaid ? 'Paid' : 'Not paid'}</p>
+        {team.teamLogoName && <p><strong>Logo</strong>{team.teamLogoName}</p>}
+      </div>
+      <small className="team-card-footnote">{totalPlayersLabel} verified for public display</small>
+      {isOpen && (
+        <div className="team-players-panel">
+          <strong>Registered Players</strong>
+          <ul className="team-players-list">
+            {team.players.map((player) => (
+              <li key={`${getTeamKey(team)}-${player.playerNumber}`}>
+                <span className="team-player-number">{player.playerNumber}</span>
+                <span className="team-player-name">{player.name || 'Name not added'}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </article>
+  )
+}
+
+function TeamsPage({ verifiedTeams, publicTeamsStatus }) {
   return (
     <main className="info-page">
       <section className="info-hero">
@@ -653,21 +702,13 @@ function TeamsPage({ registeredTeams }) {
       {verifiedTeams.length > 0 ? (
         <section className="verified-team-grid">
           {verifiedTeams.map((team) => (
-            <article key={`${team.teamName}-${team.submittedAt}`} className="verified-team-card">
-              <span>{team.status}</span>
-              <h3>{team.teamName}</h3>
-              <p>Captain: {team.captainName}</p>
-              <p>Vice Captain: {team.viceCaptainName}</p>
-              <p>Sponsor Payment: {team.sponsorPaid ? 'Paid' : 'Not paid'}</p>
-              {team.teamLogoName && <p>Logo: {team.teamLogoName}</p>}
-              <small>{team.players.length} player{team.players.length === 1 ? '' : 's'} verified</small>
-            </article>
+            <TeamRosterCard key={getTeamKey(team)} team={team} className="verified-team-card" />
           ))}
         </section>
       ) : (
         <section className="admin-empty-state">
           <h3>No verified teams yet</h3>
-          <p>Create a team from Registration, then verify it in Admin and it will appear here automatically.</p>
+          <p>{publicTeamsStatus || 'Create a team from Registration, then verify it in Admin and it will appear here automatically.'}</p>
         </section>
       )}
     </main>
@@ -680,6 +721,7 @@ function AdminPanel({
   adminForm,
   adminError,
   isAdminAuthenticated,
+  isLoadingAdminTeams,
   onAdminDeleteTeam,
   onAdminEditChange,
   onAdminExportExcel,
@@ -699,7 +741,7 @@ function AdminPanel({
           <div className="admin-login-copy">
             <span className="section-kicker">Admin Panel</span>
             <h2>Management Login</h2>
-            <p>Use the temporary admin credentials to review team registrations, captain details, and player Aadhaar submissions.</p>
+            <p>Use the admin credentials to fetch team registrations from Supabase, review captain details, and verify approved teams.</p>
           </div>
 
           <form className="admin-login-form" onSubmit={onAdminLogin}>
@@ -739,7 +781,7 @@ function AdminPanel({
         <div>
           <span className="section-kicker">Admin Panel</span>
           <h2>Registration Review Dashboard</h2>
-          <p>Temporary local dashboard for management to inspect submitted teams before the full Google Sheets workflow is finalized.</p>
+          <p>Management dashboard connected to Supabase for reviewing new team registrations and publishing verified teams to users.</p>
         </div>
         <button type="button" className="admin-logout" onClick={onAdminLogout}>
           Logout
@@ -750,11 +792,11 @@ function AdminPanel({
         <article className="admin-summary-card">
           <span>Total Registrations</span>
           <strong>{registeredTeams.length}</strong>
-          <p>Teams currently stored for review</p>
+          <p>Teams currently available in the database</p>
         </article>
         <article className="admin-summary-card">
           <span>Pending Verification</span>
-          <strong>{registeredTeams.filter((team) => team.status === 'Pending management verification').length}</strong>
+          <strong>{registeredTeams.filter((team) => team.status === pendingVerificationStatus).length}</strong>
           <p>Awaiting management approval</p>
         </article>
         <article className="admin-summary-card">
@@ -768,7 +810,7 @@ function AdminPanel({
         <div className="block-heading admin-panel-heading">
           <div>
             <h3>Team Registrations</h3>
-            <span>{registeredTeams.length > 0 ? 'Live local data' : 'No submissions yet'}</span>
+            <span>{isLoadingAdminTeams ? 'Loading Supabase data...' : registeredTeams.length > 0 ? 'Live Supabase data' : 'No submissions yet'}</span>
           </div>
           <div className="admin-export-actions">
             <button type="button" className="secondary" onClick={onAdminExportExcel}>
@@ -810,8 +852,8 @@ function AdminPanel({
               <label>
                 Status
                 <select name="status" value={adminEditForm.status} onChange={onAdminEditChange}>
-                  <option value="Pending management verification">Pending management verification</option>
-                  <option value="Verified">Verified</option>
+                  <option value={pendingVerificationStatus}>{pendingVerificationStatus}</option>
+                  <option value={verifiedTeamStatus}>{verifiedTeamStatus}</option>
                 </select>
               </label>
               <label className="admin-checkbox">
@@ -846,7 +888,7 @@ function AdminPanel({
         {registeredTeams.length > 0 ? (
           <div className="admin-team-list">
             {registeredTeams.map((team) => (
-              <article key={`${team.teamName}-${team.submittedAt}`} className="admin-team-card">
+              <article key={getTeamKey(team)} className="admin-team-card">
                 <div className="admin-team-card-header">
                   <div>
                     <h3>{team.teamName}</h3>
@@ -865,19 +907,19 @@ function AdminPanel({
                   <button type="button" className="secondary" onClick={() => onAdminSelectTeam(team)}>
                     Edit Team
                   </button>
-                  {team.status === 'Verified' ? (
+                  {team.status === verifiedTeamStatus ? (
                     <button type="button" className="verified" disabled>
                       Verified
                     </button>
                   ) : (
-                    <button type="button" onClick={() => onUpdateTeamStatus(team.submittedAt, 'Verified')}>
+                    <button type="button" onClick={() => onUpdateTeamStatus(team.id, verifiedTeamStatus)}>
                       Verify Team
                     </button>
                   )}
-                  <button type="button" className="secondary" onClick={() => onUpdateTeamStatus(team.submittedAt, 'Pending management verification')}>
+                  <button type="button" className="secondary" onClick={() => onUpdateTeamStatus(team.id, pendingVerificationStatus)}>
                     Mark Pending
                   </button>
-                  <button type="button" className="danger" onClick={() => onAdminDeleteTeam(team.submittedAt)}>
+                  <button type="button" className="danger" onClick={() => onAdminDeleteTeam(team.id)}>
                     Delete Team
                   </button>
                 </div>
@@ -904,6 +946,94 @@ function AdminPanel({
   )
 }
 
+const playerShape = PropTypes.shape({
+  playerNumber: PropTypes.number,
+  name: PropTypes.string,
+  aadhaar: PropTypes.string,
+})
+
+const teamShape = PropTypes.shape({
+  id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  submittedAt: PropTypes.string,
+  status: PropTypes.string,
+  teamName: PropTypes.string,
+  captainName: PropTypes.string,
+  captainNumber: PropTypes.string,
+  viceCaptainName: PropTypes.string,
+  viceCaptainNumber: PropTypes.string,
+  sponsorPaid: PropTypes.bool,
+  teamLogoName: PropTypes.string,
+  players: PropTypes.arrayOf(playerShape),
+})
+
+TeamRosterCard.propTypes = {
+  team: teamShape.isRequired,
+  className: PropTypes.string.isRequired,
+}
+
+InfoPage.propTypes = {
+  pageData: PropTypes.shape({
+    kicker: PropTypes.string,
+    title: PropTypes.string,
+    intro: PropTypes.string,
+    cards: PropTypes.arrayOf(PropTypes.shape({
+      title: PropTypes.string,
+      value: PropTypes.string,
+      meta: PropTypes.string,
+    })),
+    table: PropTypes.shape({
+      headings: PropTypes.arrayOf(PropTypes.string),
+      rows: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.string)),
+    }),
+    gallery: PropTypes.arrayOf(PropTypes.shape({
+      type: PropTypes.string,
+      src: PropTypes.string,
+      title: PropTypes.string,
+      alt: PropTypes.string,
+    })),
+  }).isRequired,
+}
+
+TeamsPage.propTypes = {
+  verifiedTeams: PropTypes.arrayOf(teamShape).isRequired,
+  publicTeamsStatus: PropTypes.string.isRequired,
+}
+
+AdminPanel.propTypes = {
+  adminActionMessage: PropTypes.string.isRequired,
+  adminEditForm: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    submittedAt: PropTypes.string,
+    teamName: PropTypes.string,
+    captainName: PropTypes.string,
+    captainNumber: PropTypes.string,
+    viceCaptainName: PropTypes.string,
+    viceCaptainNumber: PropTypes.string,
+    status: PropTypes.string,
+    sponsorPaid: PropTypes.bool,
+    teamLogoName: PropTypes.string,
+    playersText: PropTypes.string,
+  }),
+  adminForm: PropTypes.shape({
+    username: PropTypes.string.isRequired,
+    password: PropTypes.string.isRequired,
+  }).isRequired,
+  adminError: PropTypes.string.isRequired,
+  isAdminAuthenticated: PropTypes.bool.isRequired,
+  isLoadingAdminTeams: PropTypes.bool.isRequired,
+  onAdminDeleteTeam: PropTypes.func.isRequired,
+  onAdminEditChange: PropTypes.func.isRequired,
+  onAdminExportExcel: PropTypes.func.isRequired,
+  onAdminExportPdf: PropTypes.func.isRequired,
+  onAdminInputChange: PropTypes.func.isRequired,
+  onAdminLogin: PropTypes.func.isRequired,
+  onAdminLogout: PropTypes.func.isRequired,
+  onAdminSaveEdit: PropTypes.func.isRequired,
+  onAdminSelectTeam: PropTypes.func.isRequired,
+  onUpdateTeamStatus: PropTypes.func.isRequired,
+  registeredTeams: PropTypes.arrayOf(teamShape).isRequired,
+}
+
 function App() {
   const [page, setPage] = useState('home')
   const [teamAScore, setTeamAScore] = useState(150)
@@ -913,29 +1043,112 @@ function App() {
   const [liveMatch, setLiveMatch] = useState(fallbackMatch)
   const [registrationStatus, setRegistrationStatus] = useState('')
   const [registeredTeams, setRegisteredTeams] = useState([])
+  const [verifiedTeams, setVerifiedTeams] = useState([])
+  const [publicTeamsStatus, setPublicTeamsStatus] = useState(
+    isSupabaseConfigured ? 'Loading verified teams...' : supabaseConfigMessage,
+  )
   const [adminActionMessage, setAdminActionMessage] = useState('')
   const [adminEditForm, setAdminEditForm] = useState(null)
   const [adminForm, setAdminForm] = useState({ username: '', password: '' })
   const [adminError, setAdminError] = useState('')
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false)
+  const [isLoadingAdminTeams, setIsLoadingAdminTeams] = useState(false)
   const [sponsorPaid, setSponsorPaid] = useState(false)
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
 
   useEffect(() => {
-    setRegisteredTeams(getStoredTeams())
     setIsAdminAuthenticated(getStoredAdminAuth())
   }, [])
 
   useEffect(() => {
     function handleStorageSync() {
-      setRegisteredTeams(getStoredTeams())
       setIsAdminAuthenticated(getStoredAdminAuth())
     }
 
     window.addEventListener('storage', handleStorageSync)
     return () => window.removeEventListener('storage', handleStorageSync)
   }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadVerifiedTeams() {
+      if (!isSupabaseConfigured) {
+        if (isMounted) {
+          setVerifiedTeams([])
+          setPublicTeamsStatus(supabaseConfigMessage)
+        }
+        return
+      }
+
+      try {
+        const teams = await fetchVerifiedTeams()
+        if (isMounted) {
+          setVerifiedTeams(teams)
+          setPublicTeamsStatus(teams.length ? '' : 'No verified teams are available yet.')
+        }
+      } catch (error) {
+        if (isMounted) {
+          setVerifiedTeams([])
+          setPublicTeamsStatus(error.message || 'Unable to load verified teams from Supabase.')
+        }
+      }
+    }
+
+    loadVerifiedTeams()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadAdminTeams() {
+      if (!isAdminAuthenticated) {
+        if (isMounted) {
+          setRegisteredTeams([])
+          setAdminEditForm(null)
+        }
+        return
+      }
+
+      if (!isSupabaseConfigured) {
+        if (isMounted) {
+          setRegisteredTeams([])
+          setAdminActionMessage(supabaseConfigMessage)
+        }
+        return
+      }
+
+      setIsLoadingAdminTeams(true)
+
+      try {
+        const teams = await fetchAllTeams()
+        if (isMounted) {
+          setRegisteredTeams(teams)
+          setAdminActionMessage(teams.length ? 'Team data loaded from Supabase.' : 'No team registrations found in Supabase yet.')
+        }
+      } catch (error) {
+        if (isMounted) {
+          setRegisteredTeams([])
+          setAdminActionMessage(error.message || 'Unable to load team registrations from Supabase.')
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingAdminTeams(false)
+        }
+      }
+    }
+
+    loadAdminTeams()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isAdminAuthenticated])
 
   useEffect(() => {
     if (!liveMatchApiUrl) {
@@ -1112,22 +1325,18 @@ function App() {
           <div className="team-placeholder">
             <div>
               <span>Team Name</span>
-              <strong>{registeredTeams.length > 0 ? `${registeredTeams.length} Team${registeredTeams.length === 1 ? '' : 's'} Registered` : 'Coming Soon'}</strong>
-              <p>Submitted teams appear here instantly and remain pending until management verification is complete.</p>
+              <strong>{verifiedTeams.length > 0 ? `${verifiedTeams.length} Verified Team${verifiedTeams.length === 1 ? '' : 's'}` : 'Waiting for Verification'}</strong>
+              <p>Only verified teams from the database are shown to visitors.</p>
             </div>
             <button type="button" onClick={() => setPage('registration')}>
               Register Team
             </button>
           </div>
-          {registeredTeams.length > 0 && (
+          {publicTeamsStatus && <p>{publicTeamsStatus}</p>}
+          {verifiedTeams.length > 0 && (
             <div className="registered-team-list">
-              {registeredTeams.map((team) => (
-                <article key={`${team.teamName}-${team.submittedAt}`} className="registered-team-card">
-                  <span>{team.status}</span>
-                  <h3>{team.teamName}</h3>
-                  <p>Captain: {team.captainName} | Vice Captain: {team.viceCaptainName}</p>
-                  <small>{team.players.length} player{team.players.length === 1 ? '' : 's'} submitted</small>
-                </article>
+              {verifiedTeams.map((team) => (
+                <TeamRosterCard key={getTeamKey(team)} team={team} className="registered-team-card" />
               ))}
             </div>
           )}
@@ -1217,30 +1426,41 @@ function App() {
                 return
               }
 
-              const nextTeams = [payload, ...registeredTeams]
-              setRegisteredTeams(nextTeams)
-              saveStoredTeams(nextTeams)
-
-              if (teamRegistrationWebhookUrl) {
-                try {
-                  await fetch(teamRegistrationWebhookUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                      'Content-Type': 'text/plain;charset=utf-8',
-                    },
-                    body: JSON.stringify(payload),
-                  })
-                  setRegistrationStatus('Team registration submitted for management verification and sent to Google Sheets.')
-                } catch {
-                  setRegistrationStatus('Team saved on this device. Google Sheets submission could not be confirmed.')
-                }
-              } else {
-                setRegistrationStatus('Team saved on this device. Add NEXT_PUBLIC_APPS_SCRIPT_URL to send it to Google Sheets.')
+              if (!isSupabaseConfigured) {
+                setRegistrationStatus(supabaseConfigMessage)
+                return
               }
 
-              setSponsorPaid(false)
-              event.currentTarget.reset()
+              try {
+                const createdTeam = await createTeamRegistration(payload)
+
+                if (isAdminAuthenticated) {
+                  setRegisteredTeams((current) => [createdTeam, ...current])
+                }
+
+                if (teamRegistrationWebhookUrl) {
+                  try {
+                    await fetch(teamRegistrationWebhookUrl, {
+                      method: 'POST',
+                      mode: 'no-cors',
+                      headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                      },
+                      body: JSON.stringify(payload),
+                    })
+                    setRegistrationStatus('Team registration submitted to Supabase and synced to Google Sheets.')
+                  } catch {
+                    setRegistrationStatus('Team registration submitted to Supabase. Google Sheets sync could not be confirmed.')
+                  }
+                } else {
+                  setRegistrationStatus('Team registration submitted to Supabase for management verification.')
+                }
+
+                setSponsorPaid(false)
+                event.currentTarget.reset()
+              } catch (error) {
+                setRegistrationStatus(error.message || 'Unable to submit team registration to Supabase.')
+              }
             }}
           >
             <section className="form-section">
@@ -1344,14 +1564,22 @@ function App() {
           adminForm={adminForm}
           adminError={adminError}
           isAdminAuthenticated={isAdminAuthenticated}
-          onAdminDeleteTeam={(submittedAt) => {
-            const nextTeams = registeredTeams.filter((team) => team.submittedAt !== submittedAt)
-            setRegisteredTeams(nextTeams)
-            saveStoredTeams(nextTeams)
-            if (adminEditForm?.submittedAt === submittedAt) {
-              setAdminEditForm(null)
+          isLoadingAdminTeams={isLoadingAdminTeams}
+          onAdminDeleteTeam={async (teamId) => {
+            try {
+              await deleteTeamRegistration(teamId)
+              setRegisteredTeams((current) => current.filter((team) => team.id !== teamId))
+              if (adminEditForm?.id === teamId) {
+                setAdminEditForm(null)
+              }
+
+              const nextVerifiedTeams = await fetchVerifiedTeams()
+              setVerifiedTeams(nextVerifiedTeams)
+              setPublicTeamsStatus(nextVerifiedTeams.length ? '' : 'No verified teams are available yet.')
+              setAdminActionMessage('Team deleted from the admin dashboard.')
+            } catch (error) {
+              setAdminActionMessage(error.message || 'Unable to delete team from Supabase.')
             }
-            setAdminActionMessage('Team deleted from the admin dashboard.')
           }}
           onAdminEditChange={(event) => {
             const { name, type, value, checked } = event.target
@@ -1392,7 +1620,7 @@ function App() {
             setAdminForm({ username: '', password: '' })
             window.localStorage.removeItem('hcplAdminAuthenticated')
           }}
-          onAdminSaveEdit={(event) => {
+          onAdminSaveEdit={async (event) => {
             event.preventDefault()
 
             if (!adminEditForm) {
@@ -1417,50 +1645,58 @@ function App() {
               return
             }
 
-            const nextTeams = registeredTeams.map((team) =>
-              team.submittedAt === adminEditForm.submittedAt
-                ? {
-                    ...team,
-                    teamName: adminEditForm.teamName.trim(),
-                    captainName: adminEditForm.captainName.trim(),
-                    captainNumber: adminEditForm.captainNumber.trim(),
-                    viceCaptainName: adminEditForm.viceCaptainName.trim(),
-                    viceCaptainNumber: adminEditForm.viceCaptainNumber.trim(),
-                    status: adminEditForm.status,
-                    sponsorPaid: adminEditForm.sponsorPaid,
-                    teamLogoName: adminEditForm.sponsorPaid ? adminEditForm.teamLogoName.trim() : '',
-                    players,
-                  }
-                : team,
-            )
+            try {
+              const savedTeam = await updateTeamRegistration(adminEditForm.id, {
+                ...adminEditForm,
+                teamName: adminEditForm.teamName.trim(),
+                captainName: adminEditForm.captainName.trim(),
+                captainNumber: adminEditForm.captainNumber.trim(),
+                viceCaptainName: adminEditForm.viceCaptainName.trim(),
+                viceCaptainNumber: adminEditForm.viceCaptainNumber.trim(),
+                teamLogoName: adminEditForm.sponsorPaid ? adminEditForm.teamLogoName.trim() : '',
+                players,
+              })
 
-            setRegisteredTeams(nextTeams)
-            saveStoredTeams(nextTeams)
-            setAdminEditForm(null)
-            setAdminActionMessage('Team details updated successfully.')
+              setRegisteredTeams((current) => current.map((team) => (
+                team.id === savedTeam.id ? savedTeam : team
+              )))
+
+              const nextVerifiedTeams = await fetchVerifiedTeams()
+              setVerifiedTeams(nextVerifiedTeams)
+              setPublicTeamsStatus(nextVerifiedTeams.length ? '' : 'No verified teams are available yet.')
+              setAdminEditForm(null)
+              setAdminActionMessage('Team details updated successfully.')
+            } catch (error) {
+              setAdminActionMessage(error.message || 'Unable to update team in Supabase.')
+            }
           }}
           onAdminSelectTeam={(team) => {
             setAdminEditForm(createAdminEditForm(team))
             setAdminActionMessage('')
           }}
-          onUpdateTeamStatus={(submittedAt, status) => {
-            const nextTeams = registeredTeams.map((team) =>
-              team.submittedAt === submittedAt ? { ...team, status } : team,
-            )
-            setRegisteredTeams(nextTeams)
-            saveStoredTeams(nextTeams)
-            if (adminEditForm?.submittedAt === submittedAt) {
-              const updatedTeam = nextTeams.find((team) => team.submittedAt === submittedAt)
-              if (updatedTeam) {
+          onUpdateTeamStatus={async (teamId, status) => {
+            try {
+              const updatedTeam = await updateTeamVerificationStatus(teamId, status)
+              setRegisteredTeams((current) => current.map((team) => (
+                team.id === updatedTeam.id ? updatedTeam : team
+              )))
+
+              if (adminEditForm?.id === teamId) {
                 setAdminEditForm(createAdminEditForm(updatedTeam))
               }
+
+              const nextVerifiedTeams = await fetchVerifiedTeams()
+              setVerifiedTeams(nextVerifiedTeams)
+              setPublicTeamsStatus(nextVerifiedTeams.length ? '' : 'No verified teams are available yet.')
+              setAdminActionMessage(status === verifiedTeamStatus ? 'Team verified successfully.' : 'Team moved back to pending verification.')
+            } catch (error) {
+              setAdminActionMessage(error.message || 'Unable to update team status in Supabase.')
             }
-            setAdminActionMessage(status === 'Verified' ? 'Team verified successfully.' : 'Team moved back to pending verification.')
           }}
           registeredTeams={registeredTeams}
         />
       ) : page === 'teams' ? (
-        <TeamsPage registeredTeams={registeredTeams} />
+        <TeamsPage verifiedTeams={verifiedTeams} publicTeamsStatus={publicTeamsStatus} />
       ) : (
         <InfoPage pageData={contentPages[page]} />
       )}
