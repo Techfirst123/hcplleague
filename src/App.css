@@ -214,6 +214,10 @@ body {
   pointer-events: none;
 }
 
+.live-video-overlay a {
+  pointer-events: auto;
+}
+
 .live-video-overlay h2 {
   max-width: 26rem;
   font-size: clamp(1.5rem, 3vw, 2.7rem);
@@ -227,6 +231,30 @@ body {
   color: rgba(255, 255, 255, 0.82);
   font-weight: 700;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.42);
+}
+
+.youtube-watch-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.4rem;
+  margin-top: 0.85rem;
+  padding: 0.55rem 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 6px;
+  background: #e62117;
+  color: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  transition: transform 150ms ease, background 150ms ease;
+}
+
+.youtube-watch-link:hover {
+  background: #c81d14;
+  transform: translateY(-1px);
 }
 
 .live-pill {

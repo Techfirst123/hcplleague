@@ -11,7 +11,8 @@ import {
 import { isSupabaseConfigured, supabaseConfigMessage } from './lib/supabase'
 import './App.css'
 
-const liveMatchApiUrl = import.meta.env.VITE_LIVE_MATCH_API_URL
+const liveMatchApiUrlRaw = import.meta.env.VITE_LIVE_MATCH_API_URL
+const liveMatchApiUrl = liveMatchApiUrlRaw?.includes('your-live-match-api.example.com') ? '' : liveMatchApiUrlRaw
 const liveMatchPollMs = Number(import.meta.env.VITE_LIVE_MATCH_POLL_MS || 30000)
 const teamRegistrationWebhookUrl = import.meta.env.NEXT_PUBLIC_APPS_SCRIPT_URL || import.meta.env.VITE_TEAM_REGISTRATION_WEBHOOK_URL
 const adminUsername = import.meta.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
@@ -22,7 +23,7 @@ const pendingVerificationStatus = 'Pending management verification'
 const fallbackMatch = {
   title: 'HCPL Live Match',
   status: 'YouTube Live',
-  streamUrl: 'https://www.youtube.com/watch?v=odLIg0G5M1w',
+  streamUrl: 'https://www.youtube.com/watch?v=BNkIgRYDnBo',
   venue: 'Hazaribag Stadium',
   battingTeam: 'Team Alpha',
   bowlingTeam: 'Team Beta',
@@ -1247,6 +1248,9 @@ function App() {
               <span className="live-pill">{liveMatch.status}</span>
               <h2>{liveMatch.title}</h2>
               <p>{liveMatch.venue}</p>
+              <a className="youtube-watch-link" href={liveMatch.streamUrl} target="_blank" rel="noreferrer">
+                Watch on YouTube
+              </a>
             </div>
             <div className="live-score-strip">
               <strong>{liveMatch.battingTeam}</strong>
