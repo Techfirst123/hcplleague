@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.hcpl.com/sitemap.xml
+Sitemap: https://hcplleague.com/sitemap.xml

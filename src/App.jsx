@@ -21,10 +21,10 @@ const verifiedTeamStatus = 'Verified'
 const pendingVerificationStatus = 'Pending management verification'
 
 const fallbackMatch = {
-  title: 'HCPL Live Match',
+  title: 'Live Match Hazaribag - HCPL Hazaribag',
   status: 'YouTube Live',
   streamUrl: 'https://www.youtube.com/watch?v=BNkIgRYDnBo',
-  venue: 'Hazaribag Stadium',
+  venue: 'Hazaribagh Cricket Tournament at Hazaribag Stadium',
   battingTeam: 'Team Alpha',
   bowlingTeam: 'Team Beta',
   score: '150/5',
@@ -33,8 +33,8 @@ const fallbackMatch = {
 }
 
 const teamAnnouncement = {
-  title: 'Big News Coming',
-  announcement: 'Verified team names will be added here after management approval.',
+  title: 'Omega Cup Hazaribag Team Updates',
+  announcement: 'Verified teams for HCPL Hazaribag and the Hazaribagh Premier League will be added here after management approval.',
 }
 
 const navItems = [
@@ -51,12 +51,12 @@ const matchCenterData = {
   liveScores: [
     { title: 'Team Alpha', value: '150/5', meta: '17.4 overs' },
     { title: 'Team Beta', value: '145/7', meta: 'Target 146' },
-    { title: 'Match Status', value: 'Live', meta: 'YouTube stream active' },
+    { title: 'Live Match Hazaribag', value: 'Live', meta: 'YouTube stream active for HCPL Hazaribag' },
   ],
   schedule: [
-    ['May 10, 2026', 'Team Alpha vs Team Beta', 'HCPL Stadium', 'Scheduled'],
-    ['May 12, 2026', 'Team Gamma vs Team Delta', 'City Arena', 'Scheduled'],
-    ['May 14, 2026', 'Team Alpha vs Team Gamma', 'National Ground', 'Scheduled'],
+    ['May 10, 2026', 'Team Alpha vs Team Beta', 'HCPL Hazaribag Stadium', 'Scheduled'],
+    ['May 12, 2026', 'Team Gamma vs Team Delta', 'Omega Cup Hazaribag Arena', 'Scheduled'],
+    ['May 14, 2026', 'Team Alpha vs Team Gamma', 'Cricket League in Jharkhand Ground', 'Scheduled'],
   ],
   points: [
     ['Coming Soon', '-', '-', '-', '-', '-'],
@@ -73,8 +73,8 @@ const matchCenterData = {
 const contentPages = {
   sponsors: {
     kicker: 'Sponsors',
-    title: 'Sponsors and Partners',
-    intro: 'HCPL League sponsor and partner announcements will be featured here.',
+    title: 'Omega Cup Hazaribag Sponsors and Partners',
+    intro: 'HCPL Hazaribag sponsor and partner announcements for the Hazaribagh Premier League will be featured here.',
     cards: [
       { title: 'Featured Partner', value: 'zumbii.com', meta: 'Fashion, FMCG, pharma and daily essentials' },
       { title: 'Title Sponsor', value: 'Coming Soon', meta: 'Management verification pending' },
@@ -83,35 +83,35 @@ const contentPages = {
   },
   gallery: {
     kicker: 'Gallery',
-    title: 'HCPL Moments',
-    intro: 'Browse press conference and league event photos.',
+    title: 'HCPL Hazaribag Moments',
+    intro: 'Browse Hazaribagh Cricket Tournament press conference photos, Omega Cup Hazaribag updates, and league event media.',
     gallery: [
       {
         type: 'video',
         src: '/WhatsApp Video 2026-05-12 at 2.48.45 PM.mp4',
-        title: 'Mumbai11',
+        title: 'HCPL Hazaribag Mumbai11 video',
       },
       {
         type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
-        alt: 'HCPL League press conference with Omega Group director and Hazaribag leaders',
+        alt: 'HCPL Hazaribag press conference for Omega Cup Hazaribag with Hazaribagh cricket leaders',
       },
       {
         type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
-        alt: 'Hazaribag Premier Cricket League leaders attending the press conference',
+        alt: 'Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference',
       },
       {
         type: 'image',
         src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
-        alt: 'HCPL League press conference audience and event guests',
+        alt: 'Cricket League in Jharkhand audience at HCPL Hazaribag press conference',
       },
     ],
   },
   highlights: {
     kicker: 'Highlights',
-    title: 'Match Highlights',
-    intro: 'Video highlights and best moments will be added after official matches are completed.',
+    title: 'Hazaribagh Cricket Tournament Highlights',
+    intro: 'Live Match Hazaribag video highlights and best Hazaribagh Premier League moments will be added after official matches are completed.',
     cards: [
       { title: 'Latest Highlight', value: 'Coming Soon', meta: 'Match clips will appear here' },
       { title: 'Best Sixes', value: 'Coming Soon', meta: 'Fan favorite moments' },
@@ -125,14 +125,14 @@ function MatchCenterPage() {
     <main className="info-page">
       <section className="info-hero">
         <span className="section-kicker">Match Center</span>
-        <h2>Live Scores, Schedule, Points Table and Player Stats</h2>
-        <p>Track the complete HCPL League match picture in one place, from live scores to standings and top performers.</p>
+        <h2>Live Match Hazaribag Scores, Schedule, Points Table and Player Stats</h2>
+        <p>Track the complete HCPL Hazaribag match picture in one place, from Hazaribagh Cricket Tournament live scores to Hazaribagh Premier League standings and top performers.</p>
       </section>
 
       <section className="match-center-block">
         <div className="block-heading">
-          <h3>Live Scores</h3>
-          <span>Updated during match time</span>
+          <h3>Live Match Hazaribag Scores</h3>
+          <span>Updated during HCPL Hazaribag match time</span>
         </div>
         <div className="info-grid">
           {matchCenterData.liveScores.map((card) => (
@@ -147,8 +147,8 @@ function MatchCenterPage() {
 
       <section className="match-center-block">
         <div className="block-heading">
-          <h3>Match Schedule</h3>
-          <span>Upcoming fixtures</span>
+          <h3>Hazaribagh Cricket Tournament Schedule</h3>
+          <span>Upcoming Cricket League in Jharkhand fixtures</span>
         </div>
         <div className="table-panel">
           <table>
@@ -175,8 +175,8 @@ function MatchCenterPage() {
 
       <section className="match-center-block">
         <div className="block-heading">
-          <h3>Points Table</h3>
-          <span>Official standings</span>
+          <h3>Hazaribagh Premier League Points Table</h3>
+          <span>Official Omega Cup Hazaribag standings</span>
         </div>
         <div className="table-panel">
           <table>
@@ -205,8 +205,8 @@ function MatchCenterPage() {
 
       <section className="match-center-block">
         <div className="block-heading">
-          <h3>Player Stats</h3>
-          <span>Top performers</span>
+          <h3>HCPL Hazaribag Player Stats</h3>
+          <span>Top Cricket League in Jharkhand performers</span>
         </div>
         <div className="info-grid">
           {matchCenterData.playerStats.map((card) => (
@@ -1195,11 +1195,11 @@ function App() {
         <div className="header-left">
           <div className="logo-section">
             <div className="logo-mark">
-              <img src="/hcpllogo.jpeg" className="logo" alt="HCPL League logo" width="102" height="102" />
+              <img src="/hcpllogo.jpeg" className="logo" alt="HCPL Hazaribag logo for Hazaribagh Cricket Tournament" width="102" height="102" />
             </div>
             <div className="brand-copy">
-              <span className="brand-kicker">Hazaribag Premier Cricket</span>
-              <h1>HCPL League</h1>
+              <span className="brand-kicker">Hazaribagh Premier League</span>
+              <h1>HCPL Hazaribag</h1>
             </div>
           </div>
         </div>
@@ -1280,7 +1280,7 @@ function App() {
               <span>Daily Care</span>
             </div>
           </aside>
-          <h2>Live Comments</h2>
+          <h2>Live Match Hazaribag Comments</h2>
           <div className="comment-list">
             {comments.map((comment, index) => (
               <div key={index} className="comment">
@@ -1308,7 +1308,7 @@ function App() {
       <section className="home-banner">
         <img
           src="/progressive banner.png"
-          alt="HCPL League progressive banner"
+          alt="HCPL Hazaribag banner for Hazaribagh Cricket Tournament and Cricket League in Jharkhand"
           width="1600"
           height="500"
           loading="lazy"
@@ -1347,15 +1347,15 @@ function App() {
         </section>
 
         <div className="sponsors">
-          <h2>Press Conference</h2>
+          <h2>Omega Cup Hazaribag Press Conference</h2>
           <div className="press-headline">
-            <h3>Press Conference of Omega Group Director Mr Sadab Ansari and Respected Leaders of Hazaribag about the Hazaribag Premier League Associated with Jharkhand Association, Delhi</h3>
+            <h3>Press Conference of Omega Group Director Mr Sadab Ansari and respected leaders of Hazaribagh about HCPL Hazaribag, the Hazaribagh Premier League, and Cricket League in Jharkhand</h3>
             <p className="mission-statement">Nasha Mukti Abhiyan Mission - Boosting Athletics and Wellness Among Young Generations</p>
           </div>
           <div className="sponsors-gallery">
             <img
               src="/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg"
-              alt="HCPL League press conference with Omega Group director and Hazaribag leaders"
+              alt="HCPL Hazaribag press conference with Omega Group director for Omega Cup Hazaribag"
               className="sponsor-img"
               width="360"
               height="250"
@@ -1363,7 +1363,7 @@ function App() {
             />
             <img
               src="/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg"
-              alt="Hazaribag Premier Cricket League leaders attending the press conference"
+              alt="Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference"
               className="sponsor-img"
               width="360"
               height="250"
@@ -1371,7 +1371,7 @@ function App() {
             />
             <img
               src="/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg"
-              alt="HCPL League press conference audience and event guests"
+              alt="Cricket League in Jharkhand audience and guests at HCPL Hazaribag event"
               className="sponsor-img"
               width="360"
               height="250"
@@ -1381,7 +1381,7 @@ function App() {
         </div>
 
         <div className="scorecard">
-          <h2>Live Match Scorecard</h2>
+          <h2>Live Match Hazaribag Scorecard</h2>
           <div className="teams">
             <div className="team">
               <h3>Team Alpha</h3>

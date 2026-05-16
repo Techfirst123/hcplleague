@@ -21,16 +21,16 @@ function Fixtures() {
   ]
 
   const announcements = [
-    'New match tickets are now available for the next weekend.',
-    'Team Beta has announced a new partnership with Company C.',
-    'Live score updates will be available for every match day here.',
+    'New match tickets are now available for the HCPL Hazaribag weekend fixtures.',
+    'Omega Cup Hazaribag partner updates will be announced for the Hazaribagh Premier League.',
+    'Live Match Hazaribag score updates will be available for every Cricket League in Jharkhand match day here.',
   ]
 
   return (
     <main className="fixtures-page">
       <section className="fixtures-overview">
-        <h2>Match Fixtures</h2>
-        <p>All upcoming matches and latest announcements are listed below.</p>
+        <h2>Hazaribagh Cricket Tournament Fixtures</h2>
+        <p>All upcoming HCPL Hazaribag matches, Live Match Hazaribag updates, and latest Omega Cup Hazaribag announcements are listed below.</p>
       </section>
 
       <section className="fixture-list">
@@ -45,7 +45,7 @@ function Fixtures() {
       </section>
 
       <section className="announcements">
-        <h2>News and Announcements</h2>
+        <h2>Hazaribagh Premier League News and Announcements</h2>
         <ul>
           {announcements.map((announcement, index) => (
             <li key={index}>{announcement}</li>
