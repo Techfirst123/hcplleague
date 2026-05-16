@@ -1158,6 +1158,68 @@ body {
   border: 1px solid rgba(18, 36, 57, 0.08);
 }
 
+.admin-score-control {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1.2fr);
+  gap: 1rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+
+.admin-score-control > div:first-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #13243a;
+  color: #ffffff;
+}
+
+.admin-score-control span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-score-control strong {
+  font-size: 2.4rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.admin-score-control small {
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 800;
+}
+
+.admin-score-buttons {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.admin-score-buttons button {
+  min-height: 2.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: #0f6b4b;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.admin-score-buttons .secondary {
+  background: #e6edf3;
+  color: #304459;
+}
+
+.admin-score-buttons button:hover {
+  filter: brightness(0.94);
+}
+
 .admin-edit-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1189,6 +1251,79 @@ body {
 .admin-edit-panel textarea {
   min-height: 10rem;
   resize: vertical;
+}
+
+.admin-upload-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid rgba(18, 36, 57, 0.08);
+}
+
+.admin-upload-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: #304459;
+  font-weight: 900;
+}
+
+.admin-upload-panel input {
+  width: 100%;
+  min-height: 2.85rem;
+  padding: 0.65rem;
+  border: 1px dashed #b7c6d6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #304459;
+}
+
+.admin-media-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-top: 1rem;
+}
+
+.admin-media-card {
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid rgba(18, 36, 57, 0.08);
+}
+
+.admin-media-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #e6edf3;
+}
+
+.admin-media-card p {
+  min-height: 2.4rem;
+  margin-top: 0.55rem;
+  color: #526275;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.admin-media-card button {
+  width: 100%;
+  min-height: 2.25rem;
+  margin-top: 0.65rem;
+  border: 0;
+  border-radius: 6px;
+  background: #b42318;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.admin-media-card button:hover {
+  background: #912018;
 }
 
 .admin-checkbox {
@@ -1738,6 +1873,28 @@ body {
   transform: scale(1.03);
 }
 
+.sponsor-empty-state {
+  grid-column: 1 / -1;
+  padding: 1.5rem;
+  border: 1px dashed #b7c6d6;
+  border-radius: 8px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.sponsor-empty-state strong {
+  display: block;
+  color: #13243a;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.sponsor-empty-state p {
+  margin-top: 0.45rem;
+  color: #526275;
+  font-weight: 700;
+}
+
 .teams {
   display: flex;
   align-items: center;
@@ -1988,6 +2145,8 @@ body {
   .admin-summary,
   .admin-team-meta,
   .admin-player-grid,
+  .admin-media-grid,
+  .admin-score-control,
   .verified-team-grid {
     grid-template-columns: 1fr;
   }

@@ -19,6 +19,7 @@ const adminUsername = import.meta.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin'
 const adminPassword = import.meta.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'hcpladmin123'
 const verifiedTeamStatus = 'Verified'
 const pendingVerificationStatus = 'Pending management verification'
+const adminContentStorageKey = 'hcplAdminContent'
 
 const fallbackMatch = {
   title: 'Live Match Hazaribag - HCPL Hazaribag',
@@ -70,43 +71,47 @@ const matchCenterData = {
   ],
 }
 
+const defaultSponsorImages = []
+
+const defaultGalleryItems = [
+  {
+    type: 'video',
+    src: '/WhatsApp Video 2026-05-12 at 2.48.45 PM.mp4',
+    title: 'HCPL Hazaribag Mumbai11 video',
+  },
+  {
+    type: 'image',
+    src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
+    alt: 'HCPL Hazaribag press conference for Omega Cup Hazaribag with Hazaribagh cricket leaders',
+  },
+  {
+    type: 'image',
+    src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
+    alt: 'Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference',
+  },
+  {
+    type: 'image',
+    src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
+    alt: 'Cricket League in Jharkhand audience at HCPL Hazaribag press conference',
+  },
+]
+
 const contentPages = {
   sponsors: {
     kicker: 'Sponsors',
-    title: 'Omega Cup Hazaribag Sponsors and Partners',
-    intro: 'HCPL Hazaribag sponsor and partner announcements for the Hazaribagh Premier League will be featured here.',
+    title: 'Omega Group Trust Sponsors and Promotion Partners',
+    intro: 'Companies sponsoring HCPL Hazaribag matches through Omega Group Trust receive promotional visibility across our league portals.',
     cards: [
       { title: 'Featured Partner', value: 'zumbii.com', meta: 'Fashion, FMCG, pharma and daily essentials' },
-      { title: 'Title Sponsor', value: 'Coming Soon', meta: 'Management verification pending' },
-      { title: 'Ground Partner', value: 'Coming Soon', meta: 'Open for association' },
+      { title: 'Title Sponsor', value: 'Coming Soon', meta: 'Promotion slot open for Omega Group Trust sponsors' },
+      { title: 'Ground Partner', value: 'Coming Soon', meta: 'Company promotion available on HCPL League portals' },
     ],
   },
   gallery: {
     kicker: 'Gallery',
     title: 'HCPL Hazaribag Moments',
     intro: 'Browse Hazaribagh Cricket Tournament press conference photos, Omega Cup Hazaribag updates, and league event media.',
-    gallery: [
-      {
-        type: 'video',
-        src: '/WhatsApp Video 2026-05-12 at 2.48.45 PM.mp4',
-        title: 'HCPL Hazaribag Mumbai11 video',
-      },
-      {
-        type: 'image',
-        src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
-        alt: 'HCPL Hazaribag press conference for Omega Cup Hazaribag with Hazaribagh cricket leaders',
-      },
-      {
-        type: 'image',
-        src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
-        alt: 'Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference',
-      },
-      {
-        type: 'image',
-        src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
-        alt: 'Cricket League in Jharkhand audience at HCPL Hazaribag press conference',
-      },
-    ],
+    gallery: defaultGalleryItems,
   },
   highlights: {
     kicker: 'Highlights',
@@ -118,6 +123,55 @@ const contentPages = {
       { title: 'Best Wickets', value: 'Coming Soon', meta: 'Bowling highlights' },
     ],
   },
+}
+
+function getStoredAdminContent() {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const storedContent = JSON.parse(window.localStorage.getItem(adminContentStorageKey)) || null
+    const sanitizedContent = sanitizeStoredAdminContent(storedContent)
+
+    if (sanitizedContent && JSON.stringify(storedContent) !== JSON.stringify(sanitizedContent)) {
+      window.localStorage.setItem(adminContentStorageKey, JSON.stringify(sanitizedContent))
+    }
+
+    return sanitizedContent
+  } catch {
+    return null
+  }
+}
+
+function isOldGallerySponsorImage(image) {
+  const oldGalleryImageNames = [
+    'WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
+    'WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
+    'WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
+  ]
+
+  return oldGalleryImageNames.some((imageName) => image?.src?.includes(imageName))
+}
+
+function sanitizeStoredAdminContent(content) {
+  if (!content) {
+    return null
+  }
+
+  return {
+    ...content,
+    sponsorImages: (content.sponsorImages || []).filter((image) => !isOldGallerySponsorImage(image)),
+  }
+}
+
+function readImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Unable to read image file.'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function MatchCenterPage() {
@@ -315,6 +369,46 @@ function normalizeLiveMatch(data) {
     score: data.score || data.currentScore || fallbackMatch.score,
     overs: data.overs || data.currentOvers || fallbackMatch.overs,
     target: data.target || data.chaseTarget || fallbackMatch.target,
+  }
+}
+
+function parseScoreValue(score) {
+  const [runsText = '0', wicketsText = '0'] = String(score || '').split('/')
+  return {
+    runs: Number.parseInt(runsText, 10) || 0,
+    wickets: Number.parseInt(wicketsText, 10) || 0,
+  }
+}
+
+function formatScoreValue(runs, wickets) {
+  return `${Math.max(0, runs)}/${Math.min(10, Math.max(0, wickets))}`
+}
+
+function oversToBalls(overs) {
+  const [completedOversText = '0', ballsText = '0'] = String(overs || '').split('.')
+  const completedOvers = Number.parseInt(completedOversText, 10) || 0
+  const balls = Math.min(5, Number.parseInt(ballsText, 10) || 0)
+  return (completedOvers * 6) + balls
+}
+
+function ballsToOvers(totalBalls) {
+  const safeBalls = Math.max(0, totalBalls)
+  return `${Math.floor(safeBalls / 6)}.${safeBalls % 6}`
+}
+
+function buildLiveMatchUpdate(form) {
+  return {
+    ...fallbackMatch,
+    ...form,
+    title: form.title.trim(),
+    status: form.status.trim(),
+    streamUrl: form.streamUrl.trim(),
+    venue: form.venue.trim(),
+    battingTeam: form.battingTeam.trim(),
+    bowlingTeam: form.bowlingTeam.trim(),
+    score: form.score.trim(),
+    overs: form.overs.trim(),
+    target: form.target.trim(),
   }
 }
 
@@ -721,19 +815,29 @@ function AdminPanel({
   adminEditForm,
   adminForm,
   adminError,
+  adminGalleryItems,
+  liveMatchForm,
   isAdminAuthenticated,
   isLoadingAdminTeams,
   onAdminDeleteTeam,
   onAdminEditChange,
   onAdminExportExcel,
   onAdminExportPdf,
+  onAdminGalleryUpload,
   onAdminInputChange,
   onAdminLogin,
   onAdminLogout,
+  onAdminLiveMatchChange,
+  onAdminLiveMatchSave,
+  onAdminScoreEvent,
   onAdminSaveEdit,
   onAdminSelectTeam,
+  onAdminSponsorUpload,
+  onRemoveAdminGalleryItem,
+  onRemoveAdminSponsorImage,
   onUpdateTeamStatus,
   registeredTeams,
+  sponsorImages,
 }) {
   if (!isAdminAuthenticated) {
     return (
@@ -805,6 +909,129 @@ function AdminPanel({
           <strong>{registeredTeams.reduce((total, team) => total + team.players.length, 0)}</strong>
           <p>Total player records collected</p>
         </article>
+      </section>
+
+      <section className="admin-table-panel">
+        <div className="block-heading admin-panel-heading">
+          <div>
+            <h3>Live Score Match</h3>
+            <span>Update team names, score, overs, target, venue, and YouTube live link</span>
+          </div>
+        </div>
+        <form className="admin-edit-panel" onSubmit={onAdminLiveMatchSave}>
+          <div className="admin-score-control">
+            <div>
+              <span>{liveMatchForm.battingTeam}</span>
+              <strong>{liveMatchForm.score}</strong>
+              <small>Overs {liveMatchForm.overs} | Target {liveMatchForm.target}</small>
+            </div>
+            <div className="admin-score-buttons">
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 0, legalBall: true })}>0</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 1, legalBall: true })}>1</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 2, legalBall: true })}>2</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 3, legalBall: true })}>3</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 4, legalBall: true })}>4</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 6, legalBall: true })}>6</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 0, wicket: true, legalBall: true })}>Wicket</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 1, legalBall: false })}>Wide</button>
+              <button type="button" onClick={() => onAdminScoreEvent({ runs: 1, legalBall: false })}>No Ball</button>
+              <button type="button" className="secondary" onClick={() => onAdminScoreEvent({ undoBall: true })}>Undo Ball</button>
+            </div>
+          </div>
+          <div className="admin-edit-grid">
+            <label>
+              Match Title
+              <input name="title" type="text" value={liveMatchForm.title} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              Status
+              <input name="status" type="text" value={liveMatchForm.status} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              YouTube or Video Link
+              <input name="streamUrl" type="url" value={liveMatchForm.streamUrl} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              Venue
+              <input name="venue" type="text" value={liveMatchForm.venue} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              Batting Team Name
+              <input name="battingTeam" type="text" value={liveMatchForm.battingTeam} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              Bowling Team Name
+              <input name="bowlingTeam" type="text" value={liveMatchForm.bowlingTeam} onChange={onAdminLiveMatchChange} required />
+            </label>
+            <label>
+              Score
+              <input name="score" type="text" value={liveMatchForm.score} onChange={onAdminLiveMatchChange} placeholder="150/5" required />
+            </label>
+            <label>
+              Overs
+              <input name="overs" type="text" value={liveMatchForm.overs} onChange={onAdminLiveMatchChange} placeholder="17.4" required />
+            </label>
+            <label>
+              Target
+              <input name="target" type="text" value={liveMatchForm.target} onChange={onAdminLiveMatchChange} placeholder="146" required />
+            </label>
+          </div>
+          <div className="admin-team-actions">
+            <button type="submit">Update Live Match</button>
+          </div>
+        </form>
+      </section>
+
+      <section className="admin-table-panel">
+        <div className="block-heading admin-panel-heading">
+          <div>
+            <h3>Gallery Images</h3>
+            <span>Upload images that appear on the Gallery page</span>
+          </div>
+        </div>
+        <div className="admin-upload-panel">
+          <label>
+            Add Gallery Images
+            <input type="file" accept="image/*" multiple onChange={onAdminGalleryUpload} />
+          </label>
+          <div className="admin-media-grid">
+            {adminGalleryItems.filter((item) => item.type === 'image').map((item, index) => (
+              <article key={`${item.src}-${index}`} className="admin-media-card">
+                <img src={item.src} alt={item.alt || `Gallery upload ${index + 1}`} />
+                <p>{item.alt || `Gallery image ${index + 1}`}</p>
+                <button type="button" className="danger" onClick={() => onRemoveAdminGalleryItem(item.src)}>
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="admin-table-panel">
+        <div className="block-heading admin-panel-heading">
+          <div>
+            <h3>Sponsor Images</h3>
+            <span>Upload sponsor or partner images shown on the homepage and Sponsors page</span>
+          </div>
+        </div>
+        <div className="admin-upload-panel">
+          <label>
+            Add Sponsor Images
+            <input type="file" accept="image/*" multiple onChange={onAdminSponsorUpload} />
+          </label>
+          <div className="admin-media-grid">
+            {sponsorImages.map((image, index) => (
+              <article key={`${image.src}-${index}`} className="admin-media-card">
+                <img src={image.src} alt={image.alt || `Sponsor upload ${index + 1}`} />
+                <p>{image.alt || `Sponsor image ${index + 1}`}</p>
+                <button type="button" className="danger" onClick={() => onRemoveAdminSponsorImage(image.src)}>
+                  Remove
+                </button>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="admin-table-panel">
@@ -1020,28 +1247,58 @@ AdminPanel.propTypes = {
     password: PropTypes.string.isRequired,
   }).isRequired,
   adminError: PropTypes.string.isRequired,
+  adminGalleryItems: PropTypes.arrayOf(PropTypes.shape({
+    type: PropTypes.string,
+    src: PropTypes.string,
+    title: PropTypes.string,
+    alt: PropTypes.string,
+  })).isRequired,
   isAdminAuthenticated: PropTypes.bool.isRequired,
   isLoadingAdminTeams: PropTypes.bool.isRequired,
+  liveMatchForm: PropTypes.shape({
+    title: PropTypes.string,
+    status: PropTypes.string,
+    streamUrl: PropTypes.string,
+    venue: PropTypes.string,
+    battingTeam: PropTypes.string,
+    bowlingTeam: PropTypes.string,
+    score: PropTypes.string,
+    overs: PropTypes.string,
+    target: PropTypes.string,
+  }).isRequired,
   onAdminDeleteTeam: PropTypes.func.isRequired,
   onAdminEditChange: PropTypes.func.isRequired,
   onAdminExportExcel: PropTypes.func.isRequired,
   onAdminExportPdf: PropTypes.func.isRequired,
+  onAdminGalleryUpload: PropTypes.func.isRequired,
   onAdminInputChange: PropTypes.func.isRequired,
   onAdminLogin: PropTypes.func.isRequired,
   onAdminLogout: PropTypes.func.isRequired,
+  onAdminLiveMatchChange: PropTypes.func.isRequired,
+  onAdminLiveMatchSave: PropTypes.func.isRequired,
+  onAdminScoreEvent: PropTypes.func.isRequired,
   onAdminSaveEdit: PropTypes.func.isRequired,
   onAdminSelectTeam: PropTypes.func.isRequired,
+  onAdminSponsorUpload: PropTypes.func.isRequired,
+  onRemoveAdminGalleryItem: PropTypes.func.isRequired,
+  onRemoveAdminSponsorImage: PropTypes.func.isRequired,
   onUpdateTeamStatus: PropTypes.func.isRequired,
   registeredTeams: PropTypes.arrayOf(teamShape).isRequired,
+  sponsorImages: PropTypes.arrayOf(PropTypes.shape({
+    src: PropTypes.string,
+    alt: PropTypes.string,
+  })).isRequired,
 }
 
 function App() {
-  const [page, setPage] = useState('home')
-  const [teamAScore, setTeamAScore] = useState(150)
-  const [teamBScore, setTeamBScore] = useState(145)
+  const storedAdminContent = getStoredAdminContent()
+  const [page, setPage] = useState(() => (window.location.hash === '#admin' ? 'admin' : 'home'))
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
-  const [liveMatch, setLiveMatch] = useState(fallbackMatch)
+  const [liveMatch, setLiveMatch] = useState(storedAdminContent?.liveMatch || fallbackMatch)
+  const [liveMatchForm, setLiveMatchForm] = useState(storedAdminContent?.liveMatch || fallbackMatch)
+  const [adminGalleryItems, setAdminGalleryItems] = useState(storedAdminContent?.galleryItems || defaultGalleryItems)
+  const [sponsorImages, setSponsorImages] = useState(storedAdminContent?.sponsorImages || defaultSponsorImages)
   const [registrationStatus, setRegistrationStatus] = useState('')
   const [registeredTeams, setRegisteredTeams] = useState([])
   const [verifiedTeams, setVerifiedTeams] = useState([])
@@ -1057,9 +1314,40 @@ function App() {
   const [sponsorPaid, setSponsorPaid] = useState(false)
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
+  const isAdminPage = page === 'admin'
+  const activeContentPages = {
+    ...contentPages,
+    sponsors: {
+      ...contentPages.sponsors,
+      gallery: sponsorImages.map((image) => ({ ...image, type: 'image' })),
+    },
+    gallery: {
+      ...contentPages.gallery,
+      gallery: adminGalleryItems,
+    },
+  }
+
+  useEffect(() => {
+    window.localStorage.setItem(adminContentStorageKey, JSON.stringify({
+      liveMatch,
+      galleryItems: adminGalleryItems,
+      sponsorImages,
+    }))
+  }, [adminGalleryItems, liveMatch, sponsorImages])
 
   useEffect(() => {
     setIsAdminAuthenticated(getStoredAdminAuth())
+  }, [])
+
+  useEffect(() => {
+    function handleHashChange() {
+      if (window.location.hash === '#admin') {
+        setPage('admin')
+      }
+    }
+
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
   }, [])
 
   useEffect(() => {
@@ -1170,7 +1458,9 @@ function App() {
         const data = await response.json()
 
         if (isMounted) {
-          setLiveMatch(normalizeLiveMatch(data))
+          const nextLiveMatch = normalizeLiveMatch(data)
+          setLiveMatch(nextLiveMatch)
+          setLiveMatchForm(nextLiveMatch)
           setMatchApiStatus('Live API connected')
         }
       } catch (error) {
@@ -1189,6 +1479,97 @@ function App() {
     }
   }, [])
 
+  async function handleAdminGalleryUpload(event) {
+    const files = Array.from(event.target.files || [])
+
+    if (!files.length) {
+      return
+    }
+
+    try {
+      const uploadedItems = await Promise.all(files.map(async (file) => ({
+        type: 'image',
+        src: await readImageFile(file),
+        alt: `${file.name.replace(/\.[^/.]+$/, '')} gallery image for HCPL Hazaribag`,
+      })))
+      setAdminGalleryItems((current) => [...current, ...uploadedItems])
+      setAdminActionMessage(`${uploadedItems.length} gallery image${uploadedItems.length === 1 ? '' : 's'} uploaded.`)
+      event.target.value = ''
+    } catch (error) {
+      setAdminActionMessage(error.message || 'Unable to upload gallery images.')
+    }
+  }
+
+  async function handleAdminSponsorUpload(event) {
+    const files = Array.from(event.target.files || [])
+
+    if (!files.length) {
+      return
+    }
+
+    try {
+      const uploadedImages = await Promise.all(files.map(async (file) => ({
+        src: await readImageFile(file),
+        alt: `${file.name.replace(/\.[^/.]+$/, '')} sponsor image for Omega Cup Hazaribag`,
+      })))
+      setSponsorImages((current) => [...current, ...uploadedImages])
+      setAdminActionMessage(`${uploadedImages.length} sponsor image${uploadedImages.length === 1 ? '' : 's'} uploaded.`)
+      event.target.value = ''
+    } catch (error) {
+      setAdminActionMessage(error.message || 'Unable to upload sponsor images.')
+    }
+  }
+
+  function handleAdminLiveMatchChange(event) {
+    const { name, value } = event.target
+    setLiveMatchForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function handleAdminLiveMatchSave(event) {
+    event.preventDefault()
+    const nextLiveMatch = buildLiveMatchUpdate(liveMatchForm)
+    setLiveMatch(nextLiveMatch)
+    setLiveMatchForm(nextLiveMatch)
+    setMatchApiStatus('Admin live match details saved')
+    setAdminActionMessage('Live match details updated on the homepage.')
+    window.alert('Live match details updated successfully.')
+  }
+
+  function handleAdminScoreEvent(scoreEvent) {
+    setLiveMatchForm((current) => {
+      const currentScore = parseScoreValue(current.score)
+      const currentBalls = oversToBalls(current.overs)
+      const nextBalls = scoreEvent.undoBall
+        ? Math.max(0, currentBalls - 1)
+        : currentBalls + (scoreEvent.legalBall ? 1 : 0)
+      const nextScore = formatScoreValue(
+        currentScore.runs + (scoreEvent.runs || 0),
+        currentScore.wickets + (scoreEvent.wicket ? 1 : 0),
+      )
+      const nextForm = {
+        ...current,
+        score: nextScore,
+        overs: ballsToOvers(nextBalls),
+      }
+      const nextLiveMatch = buildLiveMatchUpdate(nextForm)
+
+      setLiveMatch(nextLiveMatch)
+      setMatchApiStatus('Admin scoreboard updated')
+      setAdminActionMessage('Scoreboard updated.')
+      return nextLiveMatch
+    })
+  }
+
+  function removeAdminGalleryItem(src) {
+    setAdminGalleryItems((current) => current.filter((item) => item.src !== src))
+    setAdminActionMessage('Gallery image removed.')
+  }
+
+  function removeAdminSponsorImage(src) {
+    setSponsorImages((current) => current.filter((image) => image.src !== src))
+    setAdminActionMessage('Sponsor image removed.')
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -1206,22 +1587,30 @@ function App() {
         <div className="header-actions">
           <button
             type="button"
-            className={page === 'admin' ? 'admin-mini-button active' : 'admin-mini-button'}
-            onClick={() => setPage('admin')}
+            className={isAdminPage ? 'admin-mini-button active' : 'admin-mini-button'}
+            onClick={() => {
+              if (isAdminPage) {
+                return
+              }
+
+              window.open(`${window.location.origin}${window.location.pathname}#admin`, '_blank', 'noopener,noreferrer')
+            }}
           >
             Admin
           </button>
-          <nav className="main-nav">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                className={page === item.id ? 'nav-button active' : 'nav-button'}
-                onClick={() => setPage(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
+          {!isAdminPage && (
+            <nav className="main-nav">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={page === item.id ? 'nav-button active' : 'nav-button'}
+                  onClick={() => setPage(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
       
@@ -1347,36 +1736,30 @@ function App() {
         </section>
 
         <div className="sponsors">
-          <h2>Omega Cup Hazaribag Press Conference</h2>
+          <h2>Omega Group Trust Sponsor Promotion</h2>
           <div className="press-headline">
-            <h3>Press Conference of Omega Group Director Mr Sadab Ansari and respected leaders of Hazaribagh about HCPL Hazaribag, the Hazaribagh Premier League, and Cricket League in Jharkhand</h3>
-            <p className="mission-statement">Nasha Mukti Abhiyan Mission - Boosting Athletics and Wellness Among Young Generations</p>
+            <h3>Companies sponsoring HCPL Hazaribag matches with Omega Group Trust will receive promotion across our official portals.</h3>
+            <p className="mission-statement">Sponsor images, brand banners, and partner promotions can be uploaded from the admin panel.</p>
           </div>
           <div className="sponsors-gallery">
-            <img
-              src="/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg"
-              alt="HCPL Hazaribag press conference with Omega Group director for Omega Cup Hazaribag"
-              className="sponsor-img"
-              width="360"
-              height="250"
-              loading="lazy"
-            />
-            <img
-              src="/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg"
-              alt="Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference"
-              className="sponsor-img"
-              width="360"
-              height="250"
-              loading="lazy"
-            />
-            <img
-              src="/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg"
-              alt="Cricket League in Jharkhand audience and guests at HCPL Hazaribag event"
-              className="sponsor-img"
-              width="360"
-              height="250"
-              loading="lazy"
-            />
+            {sponsorImages.length > 0 ? (
+              sponsorImages.map((image, index) => (
+                <img
+                  key={`${image.src}-${index}`}
+                  src={image.src}
+                  alt={image.alt}
+                  className="sponsor-img"
+                  width="360"
+                  height="250"
+                  loading="lazy"
+                />
+              ))
+            ) : (
+              <div className="sponsor-empty-state">
+                <strong>Sponsor promotions coming soon</strong>
+                <p>Approved company sponsor images will appear here after admin upload.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1384,15 +1767,15 @@ function App() {
           <h2>Live Match Hazaribag Scorecard</h2>
           <div className="teams">
             <div className="team">
-              <h3>Team Alpha</h3>
-              <p>Score: {teamAScore}/5</p>
-              <button onClick={() => setTeamAScore(teamAScore + 1)}>Score Run</button>
+              <h3>{liveMatch.battingTeam}</h3>
+              <p>Score: {liveMatch.score}</p>
+              <p>Overs: {liveMatch.overs}</p>
             </div>
             <div className="vs">VS</div>
             <div className="team">
-              <h3>Team Beta</h3>
-              <p>Score: {teamBScore}/7</p>
-              <button onClick={() => setTeamBScore(teamBScore + 1)}>Score Run</button>
+              <h3>{liveMatch.bowlingTeam}</h3>
+              <p>Target: {liveMatch.target}</p>
+              <p>Status: {liveMatch.status}</p>
             </div>
           </div>
         </div>
@@ -1567,8 +1950,10 @@ function App() {
           adminEditForm={adminEditForm}
           adminForm={adminForm}
           adminError={adminError}
+          adminGalleryItems={adminGalleryItems}
           isAdminAuthenticated={isAdminAuthenticated}
           isLoadingAdminTeams={isLoadingAdminTeams}
+          liveMatchForm={liveMatchForm}
           onAdminDeleteTeam={async (teamId) => {
             try {
               await deleteTeamRegistration(teamId)
@@ -1599,6 +1984,7 @@ function App() {
           onAdminExportPdf={() => {
             setAdminActionMessage(openTeamPdfExport(registeredTeams))
           }}
+          onAdminGalleryUpload={handleAdminGalleryUpload}
           onAdminInputChange={(event) => {
             const { name, value } = event.target
             setAdminForm((current) => ({ ...current, [name]: value }))
@@ -1624,6 +2010,9 @@ function App() {
             setAdminForm({ username: '', password: '' })
             window.localStorage.removeItem('hcplAdminAuthenticated')
           }}
+          onAdminLiveMatchChange={handleAdminLiveMatchChange}
+          onAdminLiveMatchSave={handleAdminLiveMatchSave}
+          onAdminScoreEvent={handleAdminScoreEvent}
           onAdminSaveEdit={async (event) => {
             event.preventDefault()
 
@@ -1678,6 +2067,9 @@ function App() {
             setAdminEditForm(createAdminEditForm(team))
             setAdminActionMessage('')
           }}
+          onAdminSponsorUpload={handleAdminSponsorUpload}
+          onRemoveAdminGalleryItem={removeAdminGalleryItem}
+          onRemoveAdminSponsorImage={removeAdminSponsorImage}
           onUpdateTeamStatus={async (teamId, status) => {
             try {
               const updatedTeam = await updateTeamVerificationStatus(teamId, status)
@@ -1698,11 +2090,12 @@ function App() {
             }
           }}
           registeredTeams={registeredTeams}
+          sponsorImages={sponsorImages}
         />
       ) : page === 'teams' ? (
         <TeamsPage verifiedTeams={verifiedTeams} publicTeamsStatus={publicTeamsStatus} />
       ) : (
-        <InfoPage pageData={contentPages[page]} />
+        <InfoPage pageData={activeContentPages[page]} />
       )}
       
       <footer className="footer">
