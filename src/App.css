@@ -1279,6 +1279,40 @@ body {
   color: #304459;
 }
 
+.admin-upload-selection,
+.admin-upload-message {
+  margin-top: 0.75rem;
+  color: #526275;
+  font-weight: 800;
+}
+
+.admin-upload-message {
+  color: #0f6b4b;
+}
+
+.admin-upload-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+
+.admin-upload-actions button {
+  min-height: 2.55rem;
+  padding: 0.65rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: #0f6b4b;
+  color: #ffffff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.admin-upload-actions button:disabled {
+  background: #b7c6d6;
+  cursor: not-allowed;
+}
+
 .admin-media-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1293,7 +1327,8 @@ body {
   border: 1px solid rgba(18, 36, 57, 0.08);
 }
 
-.admin-media-card img {
+.admin-media-card img,
+.admin-media-card video {
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;

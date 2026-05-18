@@ -1,6 +1,20 @@
 import { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
 import {
+  createGalleryMedia,
+  createSponsorMedia,
+  deleteGalleryMedia,
+  deleteSponsorMedia,
+  fetchGalleryMedia,
+  fetchLiveMatch,
+  fetchMatchFixtures,
+  fetchPlayerStats,
+  fetchPointsTable,
+  fetchSponsorCards,
+  fetchSponsorMedia,
+  saveLiveMatch,
+} from './lib/contentService'
+import {
   createTeamRegistration,
   deleteTeamRegistration,
   fetchAllTeams,
@@ -22,15 +36,15 @@ const pendingVerificationStatus = 'Pending management verification'
 const adminContentStorageKey = 'hcplAdminContent'
 
 const fallbackMatch = {
-  title: 'Live Match Hazaribag - HCPL Hazaribag',
-  status: 'YouTube Live',
-  streamUrl: 'https://www.youtube.com/watch?v=BNkIgRYDnBo',
-  venue: 'Hazaribagh Cricket Tournament at Hazaribag Stadium',
-  battingTeam: 'Team Alpha',
-  bowlingTeam: 'Team Beta',
-  score: '150/5',
-  overs: '17.4',
-  target: '146',
+  title: 'Live Match Hazaribag',
+  status: 'Awaiting live update',
+  streamUrl: '',
+  venue: 'HCPL Hazaribag',
+  battingTeam: 'Batting Team',
+  bowlingTeam: 'Bowling Team',
+  score: '0/0',
+  overs: '0.0',
+  target: '-',
 }
 
 const teamAnnouncement = {
@@ -48,64 +62,16 @@ const navItems = [
   { id: 'highlights', label: 'Highlights' },
 ]
 
-const matchCenterData = {
-  liveScores: [
-    { title: 'Team Alpha', value: '150/5', meta: '17.4 overs' },
-    { title: 'Team Beta', value: '145/7', meta: 'Target 146' },
-    { title: 'Live Match Hazaribag', value: 'Live', meta: 'YouTube stream active for HCPL Hazaribag' },
-  ],
-  schedule: [
-    ['May 10, 2026', 'Team Alpha vs Team Beta', 'HCPL Hazaribag Stadium', 'Scheduled'],
-    ['May 12, 2026', 'Team Gamma vs Team Delta', 'Omega Cup Hazaribag Arena', 'Scheduled'],
-    ['May 14, 2026', 'Team Alpha vs Team Gamma', 'Cricket League in Jharkhand Ground', 'Scheduled'],
-  ],
-  points: [
-    ['Coming Soon', '-', '-', '-', '-', '-'],
-    ['Coming Soon', '-', '-', '-', '-', '-'],
-    ['Coming Soon', '-', '-', '-', '-', '-'],
-  ],
-  playerStats: [
-    { title: 'Most Runs', value: 'Coming Soon', meta: 'Batting leaderboard' },
-    { title: 'Most Wickets', value: 'Coming Soon', meta: 'Bowling leaderboard' },
-    { title: 'Best Strike Rate', value: 'Coming Soon', meta: 'Minimum innings required' },
-  ],
-}
-
 const defaultSponsorImages = []
-
-const defaultGalleryItems = [
-  {
-    type: 'video',
-    src: '/WhatsApp Video 2026-05-12 at 2.48.45 PM.mp4',
-    title: 'HCPL Hazaribag Mumbai11 video',
-  },
-  {
-    type: 'image',
-    src: '/WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
-    alt: 'HCPL Hazaribag press conference for Omega Cup Hazaribag with Hazaribagh cricket leaders',
-  },
-  {
-    type: 'image',
-    src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
-    alt: 'Hazaribagh Premier League leaders attending Hazaribagh Cricket Tournament press conference',
-  },
-  {
-    type: 'image',
-    src: '/WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
-    alt: 'Cricket League in Jharkhand audience at HCPL Hazaribag press conference',
-  },
-]
+const defaultGalleryItems = []
+const defaultSponsorCards = []
 
 const contentPages = {
   sponsors: {
     kicker: 'Sponsors',
     title: 'Omega Group Trust Sponsors and Promotion Partners',
     intro: 'Companies sponsoring HCPL Hazaribag matches through Omega Group Trust receive promotional visibility across our league portals.',
-    cards: [
-      { title: 'Featured Partner', value: 'zumbii.com', meta: 'Fashion, FMCG, pharma and daily essentials' },
-      { title: 'Title Sponsor', value: 'Coming Soon', meta: 'Promotion slot open for Omega Group Trust sponsors' },
-      { title: 'Ground Partner', value: 'Coming Soon', meta: 'Company promotion available on HCPL League portals' },
-    ],
+    cards: defaultSponsorCards,
   },
   gallery: {
     kicker: 'Gallery',
@@ -145,13 +111,7 @@ function getStoredAdminContent() {
 }
 
 function isOldGallerySponsorImage(image) {
-  const oldGalleryImageNames = [
-    'WhatsApp Image 2026-05-02 at 1.41.37 PM.jpeg',
-    'WhatsApp Image 2026-05-02 at 1.42.24 PM.jpeg',
-    'WhatsApp Image 2026-05-02 at 1.42.24 PM (1).jpeg',
-  ]
-
-  return oldGalleryImageNames.some((imageName) => image?.src?.includes(imageName))
+  return image?.src?.startsWith('/WhatsApp ')
 }
 
 function sanitizeStoredAdminContent(content) {
@@ -161,6 +121,7 @@ function sanitizeStoredAdminContent(content) {
 
   return {
     ...content,
+    galleryItems: (content.galleryItems || []).filter((image) => !isOldGallerySponsorImage(image)),
     sponsorImages: (content.sponsorImages || []).filter((image) => !isOldGallerySponsorImage(image)),
   }
 }
@@ -174,7 +135,7 @@ function readImageFile(file) {
   })
 }
 
-function MatchCenterPage() {
+function MatchCenterPage({ matchCenterData }) {
   return (
     <main className="info-page">
       <section className="info-hero">
@@ -189,13 +150,21 @@ function MatchCenterPage() {
           <span>Updated during HCPL Hazaribag match time</span>
         </div>
         <div className="info-grid">
-          {matchCenterData.liveScores.map((card) => (
-            <article key={`${card.title}-${card.value}`} className="info-card">
-              <span>{card.title}</span>
-              <strong>{card.value}</strong>
-              <p>{card.meta}</p>
+          {matchCenterData.liveScores.length > 0 ? (
+            matchCenterData.liveScores.map((card) => (
+              <article key={`${card.title}-${card.value}`} className="info-card">
+                <span>{card.title}</span>
+                <strong>{card.value}</strong>
+                <p>{card.meta}</p>
+              </article>
+            ))
+          ) : (
+            <article className="info-card">
+              <span>Live Match Hazaribag</span>
+              <strong>No live score yet</strong>
+              <p>Update live match data from the admin panel.</p>
             </article>
-          ))}
+          )}
         </div>
       </section>
 
@@ -215,13 +184,19 @@ function MatchCenterPage() {
               </tr>
             </thead>
             <tbody>
-              {matchCenterData.schedule.map((row, index) => (
-                <tr key={index}>
-                  {row.map((cell, cellIndex) => (
-                    <td key={`${index}-${cellIndex}`}>{cell}</td>
-                  ))}
+              {matchCenterData.schedule.length > 0 ? (
+                matchCenterData.schedule.map((row, index) => (
+                  <tr key={index}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${index}-${cellIndex}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4">No fixtures added in Supabase yet.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -245,13 +220,19 @@ function MatchCenterPage() {
               </tr>
             </thead>
             <tbody>
-              {matchCenterData.points.map((row, index) => (
-                <tr key={index}>
-                  {row.map((cell, cellIndex) => (
-                    <td key={`${index}-${cellIndex}`}>{cell}</td>
-                  ))}
+              {matchCenterData.points.length > 0 ? (
+                matchCenterData.points.map((row, index) => (
+                  <tr key={index}>
+                    {row.map((cell, cellIndex) => (
+                      <td key={`${index}-${cellIndex}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6">No points table rows added in Supabase yet.</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -263,13 +244,21 @@ function MatchCenterPage() {
           <span>Top Cricket League in Jharkhand performers</span>
         </div>
         <div className="info-grid">
-          {matchCenterData.playerStats.map((card) => (
-            <article key={`${card.title}-${card.value}`} className="info-card">
-              <span>{card.title}</span>
-              <strong>{card.value}</strong>
-              <p>{card.meta}</p>
+          {matchCenterData.playerStats.length > 0 ? (
+            matchCenterData.playerStats.map((card) => (
+              <article key={`${card.title}-${card.value}`} className="info-card">
+                <span>{card.title}</span>
+                <strong>{card.value}</strong>
+                <p>{card.meta}</p>
+              </article>
+            ))
+          ) : (
+            <article className="info-card">
+              <span>Player Stats</span>
+              <strong>No stats yet</strong>
+              <p>Add player stat rows in Supabase.</p>
             </article>
-          ))}
+          )}
         </div>
       </section>
     </main>
@@ -815,7 +804,9 @@ function AdminPanel({
   adminEditForm,
   adminForm,
   adminError,
+  galleryUploadMessage,
   adminGalleryItems,
+  galleryUploadFiles,
   liveMatchForm,
   isAdminAuthenticated,
   isLoadingAdminTeams,
@@ -824,6 +815,7 @@ function AdminPanel({
   onAdminExportExcel,
   onAdminExportPdf,
   onAdminGalleryUpload,
+  onGalleryFileSelection,
   onAdminInputChange,
   onAdminLogin,
   onAdminLogout,
@@ -833,10 +825,13 @@ function AdminPanel({
   onAdminSaveEdit,
   onAdminSelectTeam,
   onAdminSponsorUpload,
+  onSponsorFileSelection,
   onRemoveAdminGalleryItem,
   onRemoveAdminSponsorImage,
   onUpdateTeamStatus,
   registeredTeams,
+  sponsorUploadFiles,
+  sponsorUploadMessage,
   sponsorImages,
 }) {
   if (!isAdminAuthenticated) {
@@ -991,15 +986,32 @@ function AdminPanel({
         </div>
         <div className="admin-upload-panel">
           <label>
-            Add Gallery Images
-            <input type="file" accept="image/*" multiple onChange={onAdminGalleryUpload} />
+            Add Gallery Images or Videos
+            <input type="file" accept="image/*,video/*" multiple onChange={onGalleryFileSelection} />
           </label>
+          {galleryUploadFiles.length > 0 && (
+            <p className="admin-upload-selection">
+              {galleryUploadFiles.length} file{galleryUploadFiles.length === 1 ? '' : 's'} selected: {galleryUploadFiles.map((file) => file.name).join(', ')}
+            </p>
+          )}
+          <div className="admin-upload-actions">
+            <button type="button" onClick={onAdminGalleryUpload} disabled={!galleryUploadFiles.length}>
+              Upload Gallery Media
+            </button>
+          </div>
+          {galleryUploadMessage && <p className="admin-upload-message" role="status">{galleryUploadMessage}</p>}
           <div className="admin-media-grid">
-            {adminGalleryItems.filter((item) => item.type === 'image').map((item, index) => (
+            {adminGalleryItems.map((item, index) => (
               <article key={`${item.src}-${index}`} className="admin-media-card">
-                <img src={item.src} alt={item.alt || `Gallery upload ${index + 1}`} />
-                <p>{item.alt || `Gallery image ${index + 1}`}</p>
-                <button type="button" className="danger" onClick={() => onRemoveAdminGalleryItem(item.src)}>
+                {item.type === 'video' ? (
+                  <video controls preload="metadata" title={item.title || `Gallery video ${index + 1}`}>
+                    <source src={item.src} />
+                  </video>
+                ) : (
+                  <img src={item.src} alt={item.alt || `Gallery upload ${index + 1}`} />
+                )}
+                <p>{item.title || item.alt || `Gallery media ${index + 1}`}</p>
+                <button type="button" className="danger" onClick={() => onRemoveAdminGalleryItem(item)}>
                   Remove
                 </button>
               </article>
@@ -1018,14 +1030,25 @@ function AdminPanel({
         <div className="admin-upload-panel">
           <label>
             Add Sponsor Images
-            <input type="file" accept="image/*" multiple onChange={onAdminSponsorUpload} />
+            <input type="file" accept="image/*" multiple onChange={onSponsorFileSelection} />
           </label>
+          {sponsorUploadFiles.length > 0 && (
+            <p className="admin-upload-selection">
+              {sponsorUploadFiles.length} file{sponsorUploadFiles.length === 1 ? '' : 's'} selected: {sponsorUploadFiles.map((file) => file.name).join(', ')}
+            </p>
+          )}
+          <div className="admin-upload-actions">
+            <button type="button" onClick={onAdminSponsorUpload} disabled={!sponsorUploadFiles.length}>
+              Upload Sponsor Images
+            </button>
+          </div>
+          {sponsorUploadMessage && <p className="admin-upload-message" role="status">{sponsorUploadMessage}</p>}
           <div className="admin-media-grid">
             {sponsorImages.map((image, index) => (
               <article key={`${image.src}-${index}`} className="admin-media-card">
                 <img src={image.src} alt={image.alt || `Sponsor upload ${index + 1}`} />
                 <p>{image.alt || `Sponsor image ${index + 1}`}</p>
-                <button type="button" className="danger" onClick={() => onRemoveAdminSponsorImage(image.src)}>
+                <button type="button" className="danger" onClick={() => onRemoveAdminSponsorImage(image)}>
                   Remove
                 </button>
               </article>
@@ -1199,6 +1222,23 @@ TeamRosterCard.propTypes = {
   className: PropTypes.string.isRequired,
 }
 
+MatchCenterPage.propTypes = {
+  matchCenterData: PropTypes.shape({
+    liveScores: PropTypes.arrayOf(PropTypes.shape({
+      title: PropTypes.string,
+      value: PropTypes.string,
+      meta: PropTypes.string,
+    })).isRequired,
+    schedule: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.string)).isRequired,
+    points: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.string)).isRequired,
+    playerStats: PropTypes.arrayOf(PropTypes.shape({
+      title: PropTypes.string,
+      value: PropTypes.string,
+      meta: PropTypes.string,
+    })).isRequired,
+  }).isRequired,
+}
+
 InfoPage.propTypes = {
   pageData: PropTypes.shape({
     kicker: PropTypes.string,
@@ -1247,6 +1287,10 @@ AdminPanel.propTypes = {
     password: PropTypes.string.isRequired,
   }).isRequired,
   adminError: PropTypes.string.isRequired,
+  galleryUploadFiles: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string,
+  })).isRequired,
+  galleryUploadMessage: PropTypes.string.isRequired,
   adminGalleryItems: PropTypes.arrayOf(PropTypes.shape({
     type: PropTypes.string,
     src: PropTypes.string,
@@ -1271,6 +1315,7 @@ AdminPanel.propTypes = {
   onAdminExportExcel: PropTypes.func.isRequired,
   onAdminExportPdf: PropTypes.func.isRequired,
   onAdminGalleryUpload: PropTypes.func.isRequired,
+  onGalleryFileSelection: PropTypes.func.isRequired,
   onAdminInputChange: PropTypes.func.isRequired,
   onAdminLogin: PropTypes.func.isRequired,
   onAdminLogout: PropTypes.func.isRequired,
@@ -1280,10 +1325,15 @@ AdminPanel.propTypes = {
   onAdminSaveEdit: PropTypes.func.isRequired,
   onAdminSelectTeam: PropTypes.func.isRequired,
   onAdminSponsorUpload: PropTypes.func.isRequired,
+  onSponsorFileSelection: PropTypes.func.isRequired,
   onRemoveAdminGalleryItem: PropTypes.func.isRequired,
   onRemoveAdminSponsorImage: PropTypes.func.isRequired,
   onUpdateTeamStatus: PropTypes.func.isRequired,
   registeredTeams: PropTypes.arrayOf(teamShape).isRequired,
+  sponsorUploadFiles: PropTypes.arrayOf(PropTypes.shape({
+    name: PropTypes.string,
+  })).isRequired,
+  sponsorUploadMessage: PropTypes.string.isRequired,
   sponsorImages: PropTypes.arrayOf(PropTypes.shape({
     src: PropTypes.string,
     alt: PropTypes.string,
@@ -1299,6 +1349,14 @@ function App() {
   const [liveMatchForm, setLiveMatchForm] = useState(storedAdminContent?.liveMatch || fallbackMatch)
   const [adminGalleryItems, setAdminGalleryItems] = useState(storedAdminContent?.galleryItems || defaultGalleryItems)
   const [sponsorImages, setSponsorImages] = useState(storedAdminContent?.sponsorImages || defaultSponsorImages)
+  const [sponsorCards, setSponsorCards] = useState(defaultSponsorCards)
+  const [fixtures, setFixtures] = useState([])
+  const [pointsTable, setPointsTable] = useState([])
+  const [playerStats, setPlayerStats] = useState([])
+  const [galleryUploadFiles, setGalleryUploadFiles] = useState([])
+  const [galleryUploadMessage, setGalleryUploadMessage] = useState('')
+  const [sponsorUploadFiles, setSponsorUploadFiles] = useState([])
+  const [sponsorUploadMessage, setSponsorUploadMessage] = useState('')
   const [registrationStatus, setRegistrationStatus] = useState('')
   const [registeredTeams, setRegisteredTeams] = useState([])
   const [verifiedTeams, setVerifiedTeams] = useState([])
@@ -1315,10 +1373,23 @@ function App() {
   const [matchApiStatus, setMatchApiStatus] = useState(liveMatchApiUrl ? 'Connecting live API...' : 'Add API URL to enable live feed')
   const youtubeEmbedUrl = getYouTubeEmbedUrl(liveMatch.streamUrl)
   const isAdminPage = page === 'admin'
+  const matchCenterData = {
+    liveScores: liveMatch.score && liveMatch.score !== '0/0'
+      ? [
+        { title: liveMatch.battingTeam, value: liveMatch.score, meta: `${liveMatch.overs} overs` },
+        { title: liveMatch.bowlingTeam, value: liveMatch.target, meta: 'Target' },
+        { title: 'Live Match Hazaribag', value: liveMatch.status, meta: liveMatch.venue },
+      ]
+      : [],
+    schedule: fixtures,
+    points: pointsTable,
+    playerStats,
+  }
   const activeContentPages = {
     ...contentPages,
     sponsors: {
       ...contentPages.sponsors,
+      cards: sponsorCards,
       gallery: sponsorImages.map((image) => ({ ...image, type: 'image' })),
     },
     gallery: {
@@ -1334,6 +1405,62 @@ function App() {
       sponsorImages,
     }))
   }, [adminGalleryItems, liveMatch, sponsorImages])
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadSupabaseContent() {
+      if (!isSupabaseConfigured) {
+        return
+      }
+
+      try {
+        const [
+          nextGalleryItems,
+          nextSponsorImages,
+          nextSponsorCards,
+          nextFixtures,
+          nextPointsTable,
+          nextPlayerStats,
+          nextLiveMatch,
+        ] = await Promise.all([
+          fetchGalleryMedia(),
+          fetchSponsorMedia(),
+          fetchSponsorCards(),
+          fetchMatchFixtures(),
+          fetchPointsTable(),
+          fetchPlayerStats(),
+          fetchLiveMatch(),
+        ])
+
+        if (isMounted) {
+          setAdminGalleryItems(nextGalleryItems)
+          setSponsorImages(nextSponsorImages)
+          setSponsorCards(nextSponsorCards)
+          setFixtures(nextFixtures)
+          setPointsTable(nextPointsTable)
+          setPlayerStats(nextPlayerStats)
+
+          if (nextLiveMatch) {
+            setLiveMatch(nextLiveMatch)
+            setLiveMatchForm(nextLiveMatch)
+            setMatchApiStatus('Supabase live match connected')
+          }
+
+        }
+      } catch (error) {
+        if (isMounted) {
+          setAdminActionMessage(error.message || 'Unable to load Supabase content.')
+        }
+      }
+    }
+
+    loadSupabaseContent()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     setIsAdminAuthenticated(getStoredAdminAuth())
@@ -1479,43 +1606,70 @@ function App() {
     }
   }, [])
 
-  async function handleAdminGalleryUpload(event) {
+  function handleGalleryFileSelection(event) {
     const files = Array.from(event.target.files || [])
+    setGalleryUploadFiles(files)
+    setGalleryUploadMessage(files.length ? `${files.length} gallery file${files.length === 1 ? '' : 's'} ready to upload.` : '')
+  }
+
+  function handleSponsorFileSelection(event) {
+    const files = Array.from(event.target.files || [])
+    setSponsorUploadFiles(files)
+    setSponsorUploadMessage(files.length ? `${files.length} sponsor image${files.length === 1 ? '' : 's'} ready to upload.` : '')
+  }
+
+  async function handleAdminGalleryUpload() {
+    const files = galleryUploadFiles
 
     if (!files.length) {
+      setGalleryUploadMessage('Choose at least one image or video before uploading.')
       return
     }
 
+    setGalleryUploadMessage('Uploading gallery media...')
+
     try {
-      const uploadedItems = await Promise.all(files.map(async (file) => ({
-        type: 'image',
-        src: await readImageFile(file),
-        alt: `${file.name.replace(/\.[^/.]+$/, '')} gallery image for HCPL Hazaribag`,
-      })))
+      const uploadedItems = isSupabaseConfigured
+        ? await Promise.all(files.map((file, index) => createGalleryMedia(file, adminGalleryItems.length + index)))
+        : await Promise.all(files.map(async (file) => ({
+          type: file.type.startsWith('video/') ? 'video' : 'image',
+          src: await readImageFile(file),
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          alt: `${file.name.replace(/\.[^/.]+$/, '')} gallery media for HCPL Hazaribag`,
+        })))
       setAdminGalleryItems((current) => [...current, ...uploadedItems])
-      setAdminActionMessage(`${uploadedItems.length} gallery image${uploadedItems.length === 1 ? '' : 's'} uploaded.`)
-      event.target.value = ''
+      setGalleryUploadFiles([])
+      setGalleryUploadMessage(`${uploadedItems.length} gallery media file${uploadedItems.length === 1 ? '' : 's'} uploaded successfully.`)
+      setAdminActionMessage(`${uploadedItems.length} gallery media file${uploadedItems.length === 1 ? '' : 's'} uploaded successfully.`)
     } catch (error) {
-      setAdminActionMessage(error.message || 'Unable to upload gallery images.')
+      setGalleryUploadMessage(error.message || 'Unable to upload gallery media.')
+      setAdminActionMessage(error.message || 'Unable to upload gallery media.')
     }
   }
 
-  async function handleAdminSponsorUpload(event) {
-    const files = Array.from(event.target.files || [])
+  async function handleAdminSponsorUpload() {
+    const files = sponsorUploadFiles
 
     if (!files.length) {
+      setSponsorUploadMessage('Choose at least one sponsor image before uploading.')
       return
     }
 
+    setSponsorUploadMessage('Uploading sponsor images...')
+
     try {
-      const uploadedImages = await Promise.all(files.map(async (file) => ({
-        src: await readImageFile(file),
-        alt: `${file.name.replace(/\.[^/.]+$/, '')} sponsor image for Omega Cup Hazaribag`,
-      })))
+      const uploadedImages = isSupabaseConfigured
+        ? await Promise.all(files.map((file, index) => createSponsorMedia(file, sponsorImages.length + index)))
+        : await Promise.all(files.map(async (file) => ({
+          src: await readImageFile(file),
+          alt: `${file.name.replace(/\.[^/.]+$/, '')} sponsor image for Omega Cup Hazaribag`,
+        })))
       setSponsorImages((current) => [...current, ...uploadedImages])
-      setAdminActionMessage(`${uploadedImages.length} sponsor image${uploadedImages.length === 1 ? '' : 's'} uploaded.`)
-      event.target.value = ''
+      setSponsorUploadFiles([])
+      setSponsorUploadMessage(`${uploadedImages.length} sponsor image${uploadedImages.length === 1 ? '' : 's'} uploaded successfully.`)
+      setAdminActionMessage(`${uploadedImages.length} sponsor image${uploadedImages.length === 1 ? '' : 's'} uploaded successfully.`)
     } catch (error) {
+      setSponsorUploadMessage(error.message || 'Unable to upload sponsor images.')
       setAdminActionMessage(error.message || 'Unable to upload sponsor images.')
     }
   }
@@ -1525,14 +1679,20 @@ function App() {
     setLiveMatchForm((current) => ({ ...current, [name]: value }))
   }
 
-  function handleAdminLiveMatchSave(event) {
+  async function handleAdminLiveMatchSave(event) {
     event.preventDefault()
     const nextLiveMatch = buildLiveMatchUpdate(liveMatchForm)
-    setLiveMatch(nextLiveMatch)
-    setLiveMatchForm(nextLiveMatch)
-    setMatchApiStatus('Admin live match details saved')
-    setAdminActionMessage('Live match details updated on the homepage.')
-    window.alert('Live match details updated successfully.')
+
+    try {
+      const savedLiveMatch = isSupabaseConfigured ? await saveLiveMatch(nextLiveMatch) : nextLiveMatch
+      setLiveMatch(savedLiveMatch)
+      setLiveMatchForm(savedLiveMatch)
+      setMatchApiStatus(isSupabaseConfigured ? 'Supabase live match saved' : 'Admin live match details saved')
+      setAdminActionMessage('Live match details updated on the homepage.')
+      window.alert('Live match details updated successfully.')
+    } catch (error) {
+      setAdminActionMessage(error.message || 'Unable to save live match details.')
+    }
   }
 
   function handleAdminScoreEvent(scoreEvent) {
@@ -1556,18 +1716,39 @@ function App() {
       setLiveMatch(nextLiveMatch)
       setMatchApiStatus('Admin scoreboard updated')
       setAdminActionMessage('Scoreboard updated.')
+
+      if (isSupabaseConfigured) {
+        saveLiveMatch(nextLiveMatch).catch((error) => {
+          setAdminActionMessage(error.message || 'Unable to sync scoreboard to Supabase.')
+        })
+      }
+
       return nextLiveMatch
     })
   }
 
-  function removeAdminGalleryItem(src) {
-    setAdminGalleryItems((current) => current.filter((item) => item.src !== src))
-    setAdminActionMessage('Gallery image removed.')
+  async function removeAdminGalleryItem(item) {
+    try {
+      if (item.id && isSupabaseConfigured) {
+        await deleteGalleryMedia(item.id)
+      }
+      setAdminGalleryItems((current) => current.filter((currentItem) => currentItem.src !== item.src))
+      setAdminActionMessage('Gallery media removed.')
+    } catch (error) {
+      setAdminActionMessage(error.message || 'Unable to remove gallery media.')
+    }
   }
 
-  function removeAdminSponsorImage(src) {
-    setSponsorImages((current) => current.filter((image) => image.src !== src))
-    setAdminActionMessage('Sponsor image removed.')
+  async function removeAdminSponsorImage(image) {
+    try {
+      if (image.id && isSupabaseConfigured) {
+        await deleteSponsorMedia(image.id)
+      }
+      setSponsorImages((current) => current.filter((currentImage) => currentImage.src !== image.src))
+      setAdminActionMessage('Sponsor image removed.')
+    } catch (error) {
+      setAdminActionMessage(error.message || 'Unable to remove sponsor image.')
+    }
   }
 
   return (
@@ -1650,25 +1831,15 @@ function App() {
           <span className="api-status">{matchApiStatus}</span>
         </div>
         <div className="comments">
-          <aside className="partner-banner" aria-label="Featured partner zumbii.com promotion">
-            <div className="partner-copy">
-              <span className="partner-eyebrow">Featured Partner</span>
-              <h3>Shop match-day essentials on zumbii.com</h3>
-              <p>Fashion, FMCG, pharmaceuticals, Dettol Hand Wash, daily care and more from one trusted store.</p>
-              <div className="partner-actions">
-                <a className="partner-button" href="https://zumbii.com" target="_blank" rel="noreferrer">
-                  Shop Now
-                </a>
-                <span className="partner-badge">Online + Retail</span>
+          {sponsorCards[0] && (
+            <aside className="partner-banner" aria-label={`${sponsorCards[0].value} sponsor promotion`}>
+              <div className="partner-copy">
+                <span className="partner-eyebrow">{sponsorCards[0].title}</span>
+                <h3>{sponsorCards[0].value}</h3>
+                <p>{sponsorCards[0].meta}</p>
               </div>
-            </div>
-            <div className="partner-products" aria-hidden="true">
-              <span>Fashion</span>
-              <span>FMCG</span>
-              <span>Pharma</span>
-              <span>Daily Care</span>
-            </div>
-          </aside>
+            </aside>
+          )}
           <h2>Live Match Hazaribag Comments</h2>
           <div className="comment-list">
             {comments.map((comment, index) => (
@@ -1782,7 +1953,7 @@ function App() {
       </section>
         </>
       ) : page === 'match-center' ? (
-        <MatchCenterPage />
+        <MatchCenterPage matchCenterData={matchCenterData} />
       ) : page === 'registration' ? (
         <main className="registration-page">
           <section className="registration-hero">
@@ -1950,6 +2121,8 @@ function App() {
           adminEditForm={adminEditForm}
           adminForm={adminForm}
           adminError={adminError}
+          galleryUploadFiles={galleryUploadFiles}
+          galleryUploadMessage={galleryUploadMessage}
           adminGalleryItems={adminGalleryItems}
           isAdminAuthenticated={isAdminAuthenticated}
           isLoadingAdminTeams={isLoadingAdminTeams}
@@ -1985,6 +2158,7 @@ function App() {
             setAdminActionMessage(openTeamPdfExport(registeredTeams))
           }}
           onAdminGalleryUpload={handleAdminGalleryUpload}
+          onGalleryFileSelection={handleGalleryFileSelection}
           onAdminInputChange={(event) => {
             const { name, value } = event.target
             setAdminForm((current) => ({ ...current, [name]: value }))
@@ -2068,6 +2242,7 @@ function App() {
             setAdminActionMessage('')
           }}
           onAdminSponsorUpload={handleAdminSponsorUpload}
+          onSponsorFileSelection={handleSponsorFileSelection}
           onRemoveAdminGalleryItem={removeAdminGalleryItem}
           onRemoveAdminSponsorImage={removeAdminSponsorImage}
           onUpdateTeamStatus={async (teamId, status) => {
@@ -2090,6 +2265,8 @@ function App() {
             }
           }}
           registeredTeams={registeredTeams}
+          sponsorUploadFiles={sponsorUploadFiles}
+          sponsorUploadMessage={sponsorUploadMessage}
           sponsorImages={sponsorImages}
         />
       ) : page === 'teams' ? (
